@@ -78,24 +78,4 @@ This is a learning project showcasing modern .NET development practices and IoT 
 ## 📄 License
 
 MIT License - see LICENSE file for details.
-```
 
-### **Steg 2: Commit & Push**
-
-```bash
-git add .
-```
-
-```bash
-git commit -m "feat: implement core architecture and ESP32 API integration
-
-- Add temperature and configuration models
-- Implement ApiService for ESP32 communication  
-- Add SettingsService with persistent storage
-- Configure dependency injection in MAUI
-- Support configurable ESP32 IP address
-- Add comprehensive code documentation"
-```
-
-```bash
-git push origin main

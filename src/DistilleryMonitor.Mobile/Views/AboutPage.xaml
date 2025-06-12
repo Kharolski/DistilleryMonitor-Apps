@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DistilleryMonitor.Mobile.Views.AboutPage"
+             Title=""
+             BackgroundColor="#1a1a2e"
+             Shell.TitleColor="White">
+
+    <ScrollView>
+        <StackLayout Padding="20, 20, 20, 20" Spacing="20">
+
+            <!-- App Logo/Titel -->
+            <StackLayout HorizontalOptions="Center" Spacing="10">
+                <Label Text="🌡️" 
+                       FontSize="40" 
+                       HorizontalOptions="Center" />
+                <Label Text="Destilleri Monitor"
+                       Padding="0,0,0,-5"
+                       FontSize="28" 
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Version 1.0.0" 
+                       FontSize="16"
+                       Margin="0,0,0,0"
+                       TextColor="#aaa"
+                       HorizontalOptions="Center" />
+            </StackLayout>
+
+            <!-- Beskrivning -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
+                <StackLayout Spacing="10">
+                    <Label Text="📱 Om Appen" 
+                           FontSize="20" 
+                           FontAttributes="Bold"
+                           TextColor="White" />
+                    <Label Text="Destilleri Monitor hjälper dig att övervaka temperaturer i realtid från din ESP32-enhet. Perfekt för destillering och andra processer som kräver noggrann temperaturkontroll."
+                           TextColor="#ccc"
+                           LineBreakMode="WordWrap" />
+                </StackLayout>
+            </Frame>
+
+            <!-- Funktioner -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
+                <StackLayout Spacing="10">
+                    <Label Text="✨ Funktioner" 
+                           FontSize="20" 
+                           FontAttributes="Bold"
+                           TextColor="White" />
+                    <Label Text="• Real-time temperaturövervakning" TextColor="#ccc" />
+                    <Label Text="• Färgkodade statusindikatorer" TextColor="#ccc" />
+                    <Label Text="• Automatisk uppdatering" TextColor="#ccc" />
+                    <Label Text="• ESP32 integration" TextColor="#ccc" />
+                </StackLayout>
+            </Frame>
+
+            <!-- Utvecklare info -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
+                <StackLayout Spacing="10">
+                    <Label Text="👨‍💻 Utvecklad med" 
+                           FontSize="20" 
+                           FontAttributes="Bold"
+                           TextColor="White" />
+                    <Label Text="• .NET MAUI" TextColor="#ccc" />
+                    <Label Text="• C# och XAML" TextColor="#ccc" />
+                    <Label Text="• ESP32 och Arduino" TextColor="#ccc" />
+                </StackLayout>
+            </Frame>
+
+        </StackLayout>
+    </ScrollView>
+
+</ContentPage>

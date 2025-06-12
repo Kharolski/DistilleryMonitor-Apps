@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+  <selector name="tab_icon_selector">
+    <item android:state_selected="true" android:color="@color/tab_active" />
+    <item android:color="@color/tab_inactive" />
+  </selector>
+
+  <selector name="tab_text_selector">
+    <item android:state_selected="true" android:color="@color/tab_active" />
+    <item android:color="@color/tab_inactive" />
+  </selector>
+</resources>

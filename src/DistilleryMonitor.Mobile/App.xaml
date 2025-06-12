@@ -1,14 +1,23 @@
 ﻿<?xml version = "1.0" encoding = "UTF-8" ?>
-<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<Application x:Class="DistilleryMonitor.Mobile.App"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DistilleryMonitor.Mobile"
-             x:Class="DistilleryMonitor.Mobile.App">
+             xmlns:converters="clr-namespace:DistilleryMonitor.Mobile.Converters">
+
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- Registrera Converters -->
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
+            <converters:InvertBoolConverter x:Key="InvertBoolConverter" />
+            <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
+
         </ResourceDictionary>
     </Application.Resources>
+
 </Application>

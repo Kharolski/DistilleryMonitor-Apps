@@ -1,5 +1,7 @@
 ﻿using DistilleryMonitor.Core.Services;
 using DistilleryMonitor.Mobile.Services;
+using DistilleryMonitor.Mobile.ViewModels;
+using DistilleryMonitor.Mobile.Views;
 
 namespace DistilleryMonitor.Mobile
 {
@@ -16,13 +18,34 @@ namespace DistilleryMonitor.Mobile
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Registrera våra services för Dependency Injection
+            // Registrera services för Dependency Injection
             builder.Services.AddSingleton<HttpClient>();
             builder.Services.AddSingleton<ISettingsService, SettingsService>();
             builder.Services.AddSingleton<ApiService>();
 
-            // Registrera sidor (kommer senare)
+            // Registrera MockDataService med ISettingsService
+            builder.Services.AddSingleton<MockDataService>(provider =>
+                new MockDataService(provider.GetService<ISettingsService>()));
+
+            // Registrera ViewModels
+            builder.Services.AddTransient<MainPageViewModel>();
+            builder.Services.AddTransient<TemperatureDetailViewModel>();
+            builder.Services.AddTransient<SensorSettingsViewModel>();
+            builder.Services.AddTransient<SettingsViewModel>();
+
+            // Registrera sidor 
             builder.Services.AddTransient<MainPage>();
+            builder.Services.AddTransient<TemperatureDetailPage>();
+            builder.Services.AddTransient<SensorSettingsPage>();
+            builder.Services.AddTransient<SettingsPage>();
+
+#if ANDROID
+            // Registrera custom Shell renderer
+            builder.ConfigureMauiHandlers(handlers =>
+            {
+                handlers.AddHandler<Shell, DistilleryMonitor.Mobile.Platforms.Android.CustomShellRenderer>();
+            });
+#endif
 
             return builder.Build();
         }

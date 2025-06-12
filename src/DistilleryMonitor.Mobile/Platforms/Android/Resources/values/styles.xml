@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+  <!-- Main App Theme -->
+  <style name="MainTheme" parent="Maui.SplashTheme">
+    <item name="android:windowBackground">@color/colorPrimary</item>
+    <item name="android:textColorPrimary">#FFFFFF</item>
+    <item name="toolbarStyle">@style/CustomToolbar</item>
+    <item name="android:navigationBarColor">#1a1a2e</item>
+    <item name="android:windowSoftInputMode">adjustResize</item>
+
+    <!-- Shell Title styling -->
+    <item name="android:textColorPrimary">@color/title_color</item>
+    <item name="android:gravity">center</item>
+  </style>
+
+  <!-- Dina andra styles... -->
+  <style name="TabTextActive">
+    <item name="android:textSize">13sp</item>
+    <item name="android:textStyle">bold</item>
+  </style>
+
+  <style name="TabTextInactive">
+    <item name="android:textSize">12sp</item>
+    <item name="android:textStyle">normal</item>
+  </style>
+</resources>

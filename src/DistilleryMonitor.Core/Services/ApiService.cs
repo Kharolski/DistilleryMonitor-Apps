@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using DistilleryMonitor.Core.Models;
+using DistilleryMonitor.Mobile.Services;
 
 namespace DistilleryMonitor.Core.Services;
 

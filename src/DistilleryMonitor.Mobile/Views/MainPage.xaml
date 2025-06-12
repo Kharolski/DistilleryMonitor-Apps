@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="DistilleryMonitor.Mobile.Views.MainPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:components="clr-namespace:DistilleryMonitor.Mobile.Components"
+             Title=""
+             BackgroundColor="#1a1a2e"
+             Shell.TitleColor="White">
+
+    <ScrollView>
+        <Grid Padding="20,15,20,0" RowSpacing="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />             <!-- Status Header -->
+                <RowDefinition Height="Auto" />             <!-- Sensor Cards -->
+                <RowDefinition Height="Auto" />             <!-- Button -->
+                <RowDefinition Height="Auto" />             <!-- Loading Indicator -->
+            </Grid.RowDefinitions>
+
+            <!-- Status Header -->
+            <Frame Grid.Row="0"
+                   BackgroundColor="#0d1421"
+                   CornerRadius="15"
+                   Padding="20">
+                <StackLayout>
+                    <Label Text="🌡️ Temperaturövervakning"
+                           FontSize="24"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                    <Label Text="{Binding ConnectionStatus}"
+                           FontSize="16"
+                           TextColor="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"
+                           HorizontalOptions="Center"
+                           Margin="0,5,0,0" />
+                </StackLayout>
+            </Frame>
+
+            <!-- Sensor Cards med TemperatureCard Component -->
+            <CollectionView Grid.Row="1"
+                           ItemsSource="{Binding Sensors}"
+                           BackgroundColor="Transparent">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <components:TemperatureCard Sensor="{Binding}" />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Grid.Row="2"
+                    Text="🔄 Uppdatera Nu"
+                    Command="{Binding RefreshDataCommand}"
+                    BackgroundColor="#0f3460"
+                    TextColor="White"
+                    CornerRadius="10"
+                    HeightRequest="50"
+                    VerticalOptions="Start"
+                    Margin="0,0,0,0"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
+
+            <ActivityIndicator Grid.Row="3"
+                               IsVisible="{Binding IsLoading}"
+                               IsRunning="{Binding IsLoading}"
+                               Color="#00d4aa"
+                               HeightRequest="50" />
+        </Grid>
+    </ScrollView>
+</ContentPage>

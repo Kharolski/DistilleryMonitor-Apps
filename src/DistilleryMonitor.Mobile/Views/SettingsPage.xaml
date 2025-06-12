@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DistilleryMonitor.Mobile.Views.SettingsPage"
+             Title=""
+             BackgroundColor="#1a1a2e"
+             Shell.TitleColor="White">
+
+    <ScrollView>
+        <StackLayout Padding="20,20,20,20" Spacing="20">
+
+            <!-- Header -->
+            <Label Text="⚙️ Inställningar"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center"
+                   Margin="0,20,0,30" />
+
+            <!-- ESP32 Anslutning Sektion -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
+                <StackLayout Spacing="15">
+                    <Label Text="🌐 ESP32 Anslutning"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+
+                    <!-- Auto Discovery Sektion -->
+                    <StackLayout Spacing="10">
+                        <Label Text="Automatisk upptäckt:"
+                               TextColor="#ddd" />
+
+                        <!-- Sök Knapp -->
+                        <Button Text="🔍 Sök efter ESP32 enheter"
+                                BackgroundColor="#28a745"
+                                TextColor="White"
+                                CornerRadius="8"
+                                Command="{Binding SearchForDevicesCommand}" />
+
+                        <!-- Discovery Status -->
+                        <Label Text="{Binding DiscoveryStatus}"
+                               TextColor="#ffc107"
+                               FontSize="14"
+                               IsVisible="{Binding IsSearching}" />
+
+                        <!-- Enheter Dropdown -->
+                        <Label Text="Hittade enheter:"
+                               TextColor="#ddd"
+                               IsVisible="{Binding HasFoundDevices}" />
+
+                        <Picker Title="Välj ESP32 enhet"
+                                ItemsSource="{Binding FoundDevices}"
+                                ItemDisplayBinding="{Binding DisplayName}"
+                                SelectedItem="{Binding SelectedDevice}"
+                                BackgroundColor="#0f3460"
+                                TextColor="White"
+                                TitleColor="#888"
+                                IsVisible="{Binding HasFoundDevices}" />
+                    </StackLayout>
+
+                    <!-- Separator -->
+                    <BoxView HeightRequest="1" 
+                             BackgroundColor="#333" 
+                             Margin="0,10" />
+
+                    <!-- Manuell IP Sektion -->
+                    <StackLayout Spacing="10">
+                        <Label Text="Eller ange manuellt:"
+                               TextColor="#ddd"
+                               FontSize="16"
+                               FontAttributes="Bold" />
+
+                        <Label Text="IP-Adress:"
+                               TextColor="#ddd" />
+                        <Entry Text="{Binding ManualIpAddress}"
+                               Placeholder="192.168.1.100"
+                               PlaceholderColor="#888"
+                               TextColor="White"
+                               BackgroundColor="#0f3460" />
+
+                        <Label Text="Port:"
+                               TextColor="#ddd" />
+                        <Entry Text="{Binding Port}"
+                               Placeholder="80"
+                               PlaceholderColor="#888"
+                               TextColor="White"
+                               BackgroundColor="#0f3460"
+                               Keyboard="Numeric" />
+                    </StackLayout>
+
+                    <!-- Test Anslutning -->
+                    <Button Text="⚡ Testa anslutning"
+                            BackgroundColor="#17a2b8"
+                            TextColor="White"
+                            CornerRadius="8"
+                            Command="{Binding TestConnectionCommand}" />
+
+                    <!-- Connection Status -->
+                    <Label Text="{Binding ConnectionTestResult}"
+                           TextColor="{Binding ConnectionTestColor}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           IsVisible="{Binding ShowConnectionResult}" />
+
+                </StackLayout>
+            </Frame>
+
+            <!-- App Inställningar -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
+                <StackLayout Spacing="15">
+                    <Label Text="📱 App Inställningar"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+
+                    <!-- Mock Data Toggle -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0"
+                               Text="🧪 Mock Data (Testdata)"
+                               TextColor="#ddd"
+                               VerticalOptions="Center" />
+                        <Switch Grid.Column="1"
+                                IsToggled="{Binding UseMockData}"
+                                OnColor="#28a745"
+                                ThumbColor="White" />
+                    </Grid>
+
+                    <!-- Update Interval -->
+                    <StackLayout Spacing="5">
+                        <Label Text="🔄 Uppdateringsintervall:"
+                               TextColor="#ddd" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Grid.Column="0"
+                                    Minimum="1"
+                                    Maximum="10"
+                                    Value="{Binding UpdateInterval}"
+                                    ThumbColor="#28a745"
+                                    MinimumTrackColor="#28a745"
+                                    MaximumTrackColor="#555" />
+                            <Label Grid.Column="1"
+                                   Text="{Binding UpdateInterval, StringFormat='{0:F0}s'}"
+                                   TextColor="White"
+                                   VerticalOptions="Center"
+                                   Margin="10,0,0,0" />
+                        </Grid>
+                    </StackLayout>
+
+                    <!-- Notifications Toggle -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0"
+                               Text="🔔 Notifikationer"
+                               TextColor="#ddd"
+                               VerticalOptions="Center" />
+                        <Switch Grid.Column="1"
+                                IsToggled="{Binding NotificationsEnabled}"
+                                OnColor="#28a745"
+                                ThumbColor="White" />
+                    </Grid>
+
+                </StackLayout>
+            </Frame>
+
+            <!-- Spara Knapp -->
+            <Button Text="💾 Spara inställningar"
+                    BackgroundColor="#28a745"
+                    TextColor="White"
+                    CornerRadius="8"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    Command="{Binding SaveSettingsCommand}"
+                    Margin="0,20,0,40" />
+
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

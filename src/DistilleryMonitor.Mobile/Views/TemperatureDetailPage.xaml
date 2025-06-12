@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="DistilleryMonitor.Mobile.Views.TemperatureDetailPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:components="clr-namespace:DistilleryMonitor.Mobile.Components"
+             Title="{Binding SensorName}"
+             BackgroundColor="#1a1a2e"
+             Shell.TitleColor="Green"
+             Shell.BackgroundColor="#0d1421"
+             Shell.ForegroundColor="Green">
+
+    <ScrollView>
+        <Grid Padding="20,15,20,20" RowSpacing="15">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />            <!-- Sensor Info Card -->
+                <RowDefinition Height="*" />               <!-- Graph Card -->
+                <RowDefinition Height="Auto" />            <!-- Action Buttons -->
+            </Grid.RowDefinitions>
+
+            <!-- Sensor Information Card -->
+            <Frame Grid.Row="0"
+                   BackgroundColor="#333333"
+                   CornerRadius="15"
+                   Padding="20"
+                   HasShadow="True">
+                <Grid RowSpacing="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />                     <!-- Temperature -->
+                        <RowDefinition Height="Auto" />                     <!-- Optimal Range -->
+                        <RowDefinition Height="Auto" />                     <!-- Status -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Current Temperature -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,*">
+                        <Label Grid.Column="0"
+                               Text="Aktuell temperatur:"
+                               FontSize="16"
+                               TextColor="#e0e0e0"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center" />
+                        <Label Grid.Column="1"
+                               Text="{Binding Temperature, StringFormat='{0:F1}°C'}"
+                               FontSize="28"
+                               FontAttributes="Bold"
+                               TextColor="{Binding StatusColorHex}"
+                               HorizontalOptions="Start"
+                               VerticalOptions="Center"
+                               Margin="10,0,0,0" />
+                    </Grid>
+
+                    <!-- Optimal Range -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                        <Label Grid.Column="0"
+                               Text="Optimalt intervall:"
+                               FontSize="16"
+                               TextColor="#e0e0e0"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center" />
+                        <Label Grid.Column="1"
+                               Text="{Binding OptimalRangeNew}"
+                               FontSize="16"
+                               TextColor="#28a745"
+                               HorizontalOptions="Start"
+                               VerticalOptions="Center"
+                               Margin="10,0,0,0" />
+                    </Grid>
+
+                    <!-- Status with Circle -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,*">
+                        <Label Grid.Column="0"
+                               Text="Status:"
+                               FontSize="16"
+                               TextColor="#e0e0e0"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center" />
+                        <!-- Status Circle + Text i samma kolumn -->
+                        <StackLayout Grid.Column="1" 
+                                     Orientation="Horizontal" 
+                                     HorizontalOptions="Start"
+                                     VerticalOptions="Center"
+                                     Margin="10,0,0,0">
+                            <Ellipse Fill="{Binding StatusColorHex}"
+                                     WidthRequest="16"
+                                     HeightRequest="16"
+                                     VerticalOptions="Center" />
+                            <Label Text="{Binding StatusNew}"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="{Binding StatusColorHex}"
+                                   VerticalOptions="Center"
+                                   Margin="8,0,0,0" />
+                        </StackLayout>
+                    </Grid>
+                </Grid>
+            </Frame>
+
+            <!-- Graph Card -->
+            <Frame Grid.Row="1"
+                   BackgroundColor="#333333"
+                   CornerRadius="15"
+                   Padding="10"
+                   HasShadow="True"
+                   MinimumHeightRequest="300">
+                <components:TemperatureGraphView 
+                            Temperature="{Binding Temperature}"
+                            SensorName="{Binding SensorName}"
+                            SettingsService="{Binding SettingsService}"/>
+            </Frame>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0"
+                        Text="🔄 Uppdatera"
+                        Command="{Binding RefreshCommand}"
+                        BackgroundColor="#0f3460"
+                        TextColor="White"
+                        CornerRadius="10"
+                        HeightRequest="45" />
+                <Button Grid.Column="1"
+                        Text="⚙️ Inställningar"
+                        Command="{Binding SettingsCommand}"
+                        BackgroundColor="#604020"
+                        TextColor="White"
+                        CornerRadius="10"
+                        HeightRequest="45" />
+            </Grid>
+        </Grid>
+    </ScrollView>
+</ContentPage>

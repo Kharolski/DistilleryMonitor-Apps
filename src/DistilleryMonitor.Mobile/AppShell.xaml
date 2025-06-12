@@ -3,13 +3,23 @@
     x:Class="DistilleryMonitor.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:DistilleryMonitor.Mobile"
-    Shell.FlyoutBehavior="Disabled"
-    Title="DistilleryMonitor.Mobile">
+    xmlns:views="clr-namespace:DistilleryMonitor.Mobile.Views"
+    
+    Shell.TabBarTitleColor="ForestGreen"
+    Shell.TabBarUnselectedColor="#888">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <TabBar>
+        <ShellContent Title="🏠 Hem"
+                      ContentTemplate="{DataTemplate views:MainPage}"
+                      Route="home" />
+
+        <ShellContent Title="⚙️ Inställningar"
+                      ContentTemplate="{DataTemplate views:SettingsPage}"
+                      Route="settings" />
+
+        <ShellContent Title="ℹ️ Om"
+                      ContentTemplate="{DataTemplate views:AboutPage}"
+                      Route="about" />
+    </TabBar>
 
 </Shell>

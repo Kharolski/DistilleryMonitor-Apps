@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DistilleryMonitor.Mobile.Components.TemperatureCard"
+             x:Name="TemperatureCardView">
+
+    <Frame BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}, ConverterParameter=card}"
+           CornerRadius="15"
+           Padding="20,20,20,20"
+           HasShadow="True"
+           Margin="0,7.5">
+
+        <Frame.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnCardTapped" />
+        </Frame.GestureRecognizers>
+
+        <Grid ColumnDefinitions="*,Auto">
+            <StackLayout Grid.Column="0">
+                <Label Text="{Binding Name}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="White" />
+                <Label Text="{Binding Temperature, StringFormat='{0:F1}°C'}"
+                       FontSize="32"
+                       FontAttributes="Bold"
+                       TextColor="White" />
+                <Label Text="{Binding Status}"
+                       FontSize="14"
+                       TextColor="#ddd" />
+            </StackLayout>
+
+            <Ellipse Grid.Column="1"
+                     Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                     WidthRequest="20"
+                     HeightRequest="20"
+                     VerticalOptions="Center" />
+        </Grid>
+    </Frame>
+</ContentView>

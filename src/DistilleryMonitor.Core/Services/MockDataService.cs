@@ -12,7 +12,7 @@ public class MockDataService
     private readonly Random _random = new();
     private readonly ISettingsService? _settingsService;
 
-    // 🎯 Håll koll på senaste temperaturer för realistisk variation
+    // Håll koll på senaste temperaturer för realistisk variation
     private double _lastKolvTemp = 78.0;
     private double _lastDestillatTemp = 82.0;
     private double _lastKylareTemp = 25.0;
@@ -51,7 +51,7 @@ public class MockDataService
         // Hämta temperaturinställningar
         var settings = await GetTemperatureSettingsAsync();
 
-        // 🎯 Gradvis förändring istället för helt slumpmässig
+        // Gradvis förändring istället för helt slumpmässig
         _lastKolvTemp += (_random.NextDouble() * 2 - 1) * 0.5; // ±0.5°C förändring
         _lastDestillatTemp += (_random.NextDouble() * 2 - 1) * 0.3; // ±0.3°C förändring          
         _lastKylareTemp += (_random.NextDouble() * 2 - 1) * 0.2; // ±0.2°C förändring

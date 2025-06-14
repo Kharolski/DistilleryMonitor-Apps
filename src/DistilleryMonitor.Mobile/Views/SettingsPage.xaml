@@ -5,10 +5,8 @@
              Title=""
              BackgroundColor="#1a1a2e"
              Shell.TitleColor="White">
-
     <ScrollView>
         <StackLayout Padding="20,20,20,20" Spacing="20">
-
             <!-- Header -->
             <Label Text="⚙️ Inställningar"
                    FontSize="28"
@@ -29,25 +27,21 @@
                     <StackLayout Spacing="10">
                         <Label Text="Automatisk upptäckt:"
                                TextColor="#ddd" />
-
                         <!-- Sök Knapp -->
                         <Button Text="🔍 Sök efter ESP32 enheter"
                                 BackgroundColor="#28a745"
                                 TextColor="White"
                                 CornerRadius="8"
                                 Command="{Binding SearchForDevicesCommand}" />
-
                         <!-- Discovery Status -->
                         <Label Text="{Binding DiscoveryStatus}"
                                TextColor="#ffc107"
                                FontSize="14"
                                IsVisible="{Binding IsSearching}" />
-
                         <!-- Enheter Dropdown -->
                         <Label Text="Hittade enheter:"
                                TextColor="#ddd"
                                IsVisible="{Binding HasFoundDevices}" />
-
                         <Picker Title="Välj ESP32 enhet"
                                 ItemsSource="{Binding FoundDevices}"
                                 ItemDisplayBinding="{Binding DisplayName}"
@@ -59,8 +53,8 @@
                     </StackLayout>
 
                     <!-- Separator -->
-                    <BoxView HeightRequest="1" 
-                             BackgroundColor="#333" 
+                    <BoxView HeightRequest="1"
+                             BackgroundColor="#333"
                              Margin="0,10" />
 
                     <!-- Manuell IP Sektion -->
@@ -69,7 +63,6 @@
                                TextColor="#ddd"
                                FontSize="16"
                                FontAttributes="Bold" />
-
                         <Label Text="IP-Adress:"
                                TextColor="#ddd" />
                         <Entry Text="{Binding ManualIpAddress}"
@@ -77,7 +70,6 @@
                                PlaceholderColor="#888"
                                TextColor="White"
                                BackgroundColor="#0f3460" />
-
                         <Label Text="Port:"
                                TextColor="#ddd" />
                         <Entry Text="{Binding Port}"
@@ -94,7 +86,6 @@
                             TextColor="White"
                             CornerRadius="8"
                             Command="{Binding TestConnectionCommand}" />
-
                     <!-- Connection Status -->
                     <Label Text="{Binding ConnectionTestResult}"
                            TextColor="{Binding ConnectionTestColor}"
@@ -102,11 +93,10 @@
                            FontAttributes="Bold"
                            HorizontalOptions="Center"
                            IsVisible="{Binding ShowConnectionResult}" />
-
                 </StackLayout>
             </Frame>
 
-            <!-- App Inställningar -->
+            <!-- App Inställningar Sektion -->
             <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
                 <StackLayout Spacing="15">
                     <Label Text="📱 App Inställningar"
@@ -158,6 +148,50 @@
                                 ThumbColor="White" />
                     </Grid>
 
+                    <!-- Test-knapp -->
+                    <Button Text="🧪 Testa notifikation"
+                            BackgroundColor="#17a2b8"
+                            TextColor="White"
+                            CornerRadius="8"
+                            Command="{Binding TestNotificationCommand}"
+                            IsVisible="{Binding NotificationsEnabled}"
+                            Margin="0,10,0,0" />
+                </StackLayout>
+            </Frame>
+
+            <!-- KRITISK SENSOR TIMEOUT - 5 SEKUNDER -->
+            <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20"
+                   IsVisible="{Binding NotificationsEnabled}">
+                <StackLayout Spacing="15">
+                    <Label Text="🚨 Kritisk Sensor Övervakning"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+
+                    <!-- Sensor Timeout -->
+                    <StackLayout Spacing="5">
+                        <Label Text="📡 Varna när sensor tappar kontakt:"
+                               TextColor="#ddd" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Entry Grid.Column="0"
+                                   Text="{Binding SensorTimeoutSeconds}"
+                                   Placeholder="5"
+                                   PlaceholderColor="#888"
+                                   TextColor="White"
+                                   BackgroundColor="#0f3460"
+                                   Keyboard="Numeric" />
+                            <Label Grid.Column="1"
+                                   Text="sekunder"
+                                   TextColor="White"
+                                   VerticalOptions="Center"
+                                   Margin="10,0,0,0" />
+                        </Grid>
+                        <Label Text="⚠️ KRITISKT: Omedelbar varning vid sensor-fel för att skydda övervakning"
+                               TextColor="#ffc107"
+                               FontSize="12"
+                               FontAttributes="Bold"
+                               Margin="0,5,0,0" />
+                    </StackLayout>
                 </StackLayout>
             </Frame>
 
@@ -170,7 +204,6 @@
                     FontAttributes="Bold"
                     Command="{Binding SaveSettingsCommand}"
                     Margin="0,20,0,40" />
-
         </StackLayout>
     </ScrollView>
 </ContentPage>

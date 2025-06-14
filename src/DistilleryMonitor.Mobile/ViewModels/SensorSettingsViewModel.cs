@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
-using DistilleryMonitor.Mobile.Services; // ✅ Lägg till
+using DistilleryMonitor.Mobile.Services; 
 
 namespace DistilleryMonitor.Mobile.ViewModels;
 
@@ -9,7 +9,7 @@ namespace DistilleryMonitor.Mobile.ViewModels;
 [QueryProperty(nameof(SensorName), "sensorName")]
 public partial class SensorSettingsViewModel : ObservableObject
 {
-    private readonly ISettingsService _settingsService; // ✅ Lägg till
+    private readonly ISettingsService _settingsService; 
 
     [ObservableProperty] private int sensorId;
     [ObservableProperty] private string sensorName = string.Empty;
@@ -20,7 +20,7 @@ public partial class SensorSettingsViewModel : ObservableObject
     [ObservableProperty] private string criticalTemp = "90";   // Kritisk börjar vid
     [ObservableProperty] private bool isLoading = false;
 
-    // ✅ ÄNDRAT: Ta emot ISettingsService via DI
+    // Ta emot ISettingsService via DI
     public SensorSettingsViewModel(ISettingsService settingsService)
     {
         _settingsService = settingsService;
@@ -30,17 +30,17 @@ public partial class SensorSettingsViewModel : ObservableObject
     partial void OnSensorIdChanged(int value)
     {
         Debug.WriteLine($"SensorSettingsViewModel: SensorId changed to {value}");
-        _ = LoadSensorSettingsAsync(); // ✅ Nu async
+        _ = LoadSensorSettingsAsync();
     }
 
     partial void OnSensorNameChanged(string value)
     {
         Debug.WriteLine($"SensorSettingsViewModel: SensorName changed to {value}");
-        _ = LoadSensorSettingsAsync(); // ✅ Nu async
+        _ = LoadSensorSettingsAsync(); 
     }
 
     /// <summary>
-    /// ✅ ÄNDRAT: Ladda sparade inställningar från ISettingsService
+    /// Ladda sparade inställningar från ISettingsService
     /// </summary>
     private async Task LoadSensorSettingsAsync()
     {
@@ -49,7 +49,7 @@ public partial class SensorSettingsViewModel : ObservableObject
 
         try
         {
-            // ✅ Läs från ISettingsService istället för Preferences
+            // Läs från ISettingsService istället för Preferences
             switch (SensorName)
             {
                 case "Kolv":
@@ -85,7 +85,7 @@ public partial class SensorSettingsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ✅ ÄNDRAT: Spara inställningar till ISettingsService
+    /// Spara inställningar till ISettingsService
     /// </summary>
     [RelayCommand]
     private async Task SaveAsync()
@@ -104,7 +104,7 @@ public partial class SensorSettingsViewModel : ObservableObject
             var warning = double.Parse(WarningTemp);
             var critical = double.Parse(CriticalTemp);
 
-            // ✅ Spara till ISettingsService istället för Preferences
+            // Spara till ISettingsService istället för Preferences
             switch (SensorName)
             {
                 case "Kolv":
@@ -160,7 +160,7 @@ public partial class SensorSettingsViewModel : ObservableObject
         if (result)
         {
             SetDefaultValues();
-            await SaveAsync(); // ✅ Spara standardvärdena
+            await SaveAsync(); // Spara standardvärdena
 
             await Application.Current.MainPage.DisplayAlert(
                 "Återställt! 🔄",
@@ -192,9 +192,9 @@ public partial class SensorSettingsViewModel : ObservableObject
     {
         return SensorName switch
         {
-            "Kolv" => "80",      // ✅ ÄNDRAT: 80 istället för 85 (matchar dina defaults)
-            "Destillat" => "85", // ✅ ÄNDRAT: 85 istället för 90
-            "Kylare" => "30",    // ✅ ÄNDRAT: 30 istället för 35
+            "Kolv" => "80",      // 80 istället för 85 (matchar dina defaults)
+            "Destillat" => "85", // 85 istället för 90
+            "Kylare" => "30",    // 30 istället för 35
             _ => "80"
         };
     }

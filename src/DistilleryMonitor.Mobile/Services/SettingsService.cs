@@ -14,7 +14,7 @@ namespace DistilleryMonitor.Mobile.Services
         private const string NOTIFICATIONS_ENABLED_KEY = "notifications_enabled";
         private const string ESP32_PORT_KEY = "esp32_port";
 
-        // ✅ NYTT: Temperaturinställningar konstanter
+        // Temperaturinställningar konstanter
         // Kolv
         private const string KOLV_OPTIMAL_MIN_KEY = "kolv_optimal_min";
         private const string KOLV_WARNING_TEMP_KEY = "kolv_warning_temp";
@@ -40,7 +40,7 @@ namespace DistilleryMonitor.Mobile.Services
         private const bool DEFAULT_NOTIFICATIONS_ENABLED = true;
         private const int DEFAULT_PORT = 80;
 
-        // ✅ NYTT: Temperatur defaults (samma som dina hårdkodade värden)
+        // Temperatur defaults (samma som dina hårdkodade värden)
         // Kolv defaults
         private const double DEFAULT_KOLV_OPTIMAL_MIN = 70.0;
         private const double DEFAULT_KOLV_WARNING_TEMP = 80.0;

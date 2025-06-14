@@ -2,6 +2,7 @@
 using DistilleryMonitor.Mobile.Services;
 using DistilleryMonitor.Mobile.ViewModels;
 using DistilleryMonitor.Mobile.Views;
+using Plugin.LocalNotification;
 
 namespace DistilleryMonitor.Mobile
 {
@@ -12,6 +13,7 @@ namespace DistilleryMonitor.Mobile
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseLocalNotification()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -22,6 +24,7 @@ namespace DistilleryMonitor.Mobile
             builder.Services.AddSingleton<HttpClient>();
             builder.Services.AddSingleton<ISettingsService, SettingsService>();
             builder.Services.AddSingleton<ApiService>();
+            builder.Services.AddSingleton<IAppNotificationService, AppNotificationService>();
 
             // Registrera MockDataService med ISettingsService
             builder.Services.AddSingleton<MockDataService>(provider =>

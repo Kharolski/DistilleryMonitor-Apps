@@ -14,7 +14,7 @@
 
     public class TemperatureResponse
     {
-        public List<TemperatureReading> Sensors { get; set; } = new();      // = new() = Skapar tom lista som default (C# 9+ syntax)
+        public List<TemperatureReading> Sensors { get; set; } = new();      // = new() = Skapar tom lista som default 
         public long Timestamp { get; set; }
         public int SensorCount { get; set; }
     }

@@ -13,7 +13,7 @@ public partial class TemperatureDetailViewModel : ObservableObject
 {
     private readonly ApiService _apiService;
     private readonly ISettingsService _settingsService;
-    private readonly MockDataService _mockDataService; // ✅ Nu via DI
+    private readonly MockDataService _mockDataService; 
     private Timer? _updateTimer;
     private const int UPDATE_INTERVAL_SECONDS = 3;
     public ISettingsService SettingsService => _settingsService;
@@ -137,14 +137,14 @@ public partial class TemperatureDetailViewModel : ObservableObject
 
             if (UseMockData)
             {
-                // ✅ MOCK DATA MODE - Nu med Settings integration!
+                // MOCK DATA MODE - Med Settings integration!
                 StatusMessage = "Laddar testdata...";
                 response = await _mockDataService.GetTemperaturesAsync();
                 ConnectionStatus = "🧪 Testdata";
             }
             else
             {
-                // ✅ REAL ESP32 MODE
+                // REAL ESP32 MODE
                 StatusMessage = "Hämtar från ESP32...";
                 response = await _apiService.GetTemperaturesAsync();
                 if (response != null)
@@ -165,7 +165,7 @@ public partial class TemperatureDetailViewModel : ObservableObject
                 var sensor = response.Sensors.FirstOrDefault(s => s.Id == SensorId);
                 if (sensor != null)
                 {
-                    await UpdateSensorData(sensor); // ✅ Nu async för Settings
+                    await UpdateSensorData(sensor); // Nu async för Settings
                 }
                 else
                 {

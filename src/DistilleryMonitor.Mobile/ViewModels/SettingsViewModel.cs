@@ -12,12 +12,14 @@ namespace DistilleryMonitor.Mobile.ViewModels
     {
         private readonly ISettingsService _settingsService;
         private readonly ApiService _apiService;
+        private readonly IAppNotificationService _notificationService;
 
         // Constructor
-        public SettingsViewModel(ApiService apiService, ISettingsService settingsService)
+        public SettingsViewModel(ApiService apiService, ISettingsService settingsService, IAppNotificationService notificationService)
         {
             _apiService = apiService;
             _settingsService = settingsService;
+            _notificationService = notificationService;
 
             // Initialize collections
             FoundDevices = new ObservableCollection<Esp32Device>();
@@ -26,6 +28,7 @@ namespace DistilleryMonitor.Mobile.ViewModels
             SearchForDevicesCommand = new Command(async () => await SearchForDevicesAsync());
             TestConnectionCommand = new Command(async () => await TestConnectionAsync());
             SaveSettingsCommand = new Command(async () => await SaveSettingsAsync());
+            TestNotificationCommand = new Command(async () => await TestNotificationAsync());
 
             // Load saved settings
             _ = Task.Run(async () => await LoadSettingsAsync());
@@ -175,6 +178,17 @@ namespace DistilleryMonitor.Mobile.ViewModels
             }
         }
 
+        // 5 sekunder för kritisk övervakning
+        private int _sensorTimeoutSeconds = 5;
+        public int SensorTimeoutSeconds
+        {
+            get => _sensorTimeoutSeconds;
+            set
+            {
+                _sensorTimeoutSeconds = value;
+                OnPropertyChanged();
+            }
+        }
         #endregion
 
         #region Commands
@@ -182,6 +196,7 @@ namespace DistilleryMonitor.Mobile.ViewModels
         public ICommand SearchForDevicesCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand SaveSettingsCommand { get; }
+        public ICommand TestNotificationCommand { get; }
 
         #endregion
 
@@ -250,7 +265,7 @@ namespace DistilleryMonitor.Mobile.ViewModels
 
                 string ipToTest = !string.IsNullOrEmpty(ManualIpAddress) ? ManualIpAddress : "192.168.1.100";
 
-                // ✅ Använd din befintliga ApiService
+                // Använd din befintliga ApiService
                 bool isSuccess = await _apiService.TestConnectionAsync(ipToTest);
 
                 if (isSuccess)
@@ -283,7 +298,7 @@ namespace DistilleryMonitor.Mobile.ViewModels
         {
             try
             {
-                // ✅ Använd alla ISettingsService metoder
+                // Använd alla ISettingsService metoder
                 ManualIpAddress = await _settingsService.GetEsp32IpAsync();
                 Port = (await _settingsService.GetPortAsync()).ToString();
                 UseMockData = await _settingsService.GetUseMockDataAsync();
@@ -334,6 +349,40 @@ namespace DistilleryMonitor.Mobile.ViewModels
             }
         }
 
+        private async Task TestNotificationAsync()
+        {
+            try
+            {
+                // Först be om tillstånd
+                bool hasPermission = await _notificationService.RequestPermissionAsync();
+
+                if (!hasPermission)
+                {
+                    ConnectionTestResult = "❌ Notifikationstillstånd nekades";
+                    ConnectionTestColor = "#dc3545";
+                    return;
+                }
+
+                // Skicka test-notifikation
+                await _notificationService.ShowNotificationAsync(
+                    "🧪 Test Notifikation",
+                    "Notifikationer fungerar perfekt!",
+                    false);
+
+                // Visa bekräftelse
+                ConnectionTestResult = "✅ Test-notifikation skickad!";
+                ConnectionTestColor = "#28a745";
+
+                // Rensa efter 3 sekunder
+                await Task.Delay(3000);
+                ConnectionTestResult = "";
+            }
+            catch (Exception ex)
+            {
+                ConnectionTestResult = $"❌ Notifikationsfel: {ex.Message}";
+                ConnectionTestColor = "#dc3545";
+            }
+        }
         #endregion
 
         #region INotifyPropertyChanged

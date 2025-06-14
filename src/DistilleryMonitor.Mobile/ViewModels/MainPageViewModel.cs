@@ -11,7 +11,8 @@ public partial class MainPageViewModel : ObservableObject
 {
     private readonly ApiService _apiService;
     private readonly ISettingsService _settingsService;
-    private readonly MockDataService _mockDataService; // ✅ Samma som innan
+    private readonly MockDataService _mockDataService;
+    private readonly IAppNotificationService _notificationService;
     private Timer? _updateTimer;
 
     [ObservableProperty] private bool isLoading = false;
@@ -20,15 +21,20 @@ public partial class MainPageViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<TemperatureReading> sensors = new();
     [ObservableProperty] private bool useMockData = false;
 
-    // ✅ ÄNDRAT: Ta emot MockDataService via DI istället för att skapa ny
-    public MainPageViewModel(ApiService apiService, ISettingsService settingsService, MockDataService mockDataService)
+    // Ta emot MockDataService via DI 
+    public MainPageViewModel(ApiService apiService, ISettingsService settingsService,
+                          MockDataService mockDataService, IAppNotificationService notificationService)
     {
         _apiService = apiService;
         _settingsService = settingsService;
-        _mockDataService = mockDataService; // ✅ Använd injected service
+        _mockDataService = mockDataService;
+        _notificationService = notificationService; 
 
         // Ladda mock data setting
         _ = Task.Run(async () => await LoadSettingsAsync());
+
+        // Fråga om notifikationer vid första start
+        _ = Task.Run(async () => await CheckNotificationPermissionOnStartup());
     }
 
     /// <summary>
@@ -56,6 +62,38 @@ public partial class MainPageViewModel : ObservableObject
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading settings: {ex.Message}");
+        }
+    }
+
+    private async Task CheckNotificationPermissionOnStartup()
+    {
+        try
+        {
+            await Task.Delay(2000); // Vänta 2 sek så appen hinner ladda
+
+            bool hasPermission = await _notificationService.RequestPermissionAsync();
+
+            if (!hasPermission)
+            {
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    bool userWants = await Application.Current.MainPage.DisplayAlert(
+                        "🔔 Notifikationer",
+                        "Vill du få varningar när temperaturer blir för höga?\n\nDetta hjälper dig övervaka destillationen säkert.",
+                        "Ja, aktivera",
+                        "Nej tack"
+                    );
+
+                    if (userWants)
+                    {
+                        await _notificationService.RequestPermissionAsync();
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Startup permission check: {ex.Message}");
         }
     }
 
@@ -249,6 +287,13 @@ public partial class MainPageViewModel : ObservableObject
                     }
                 }
             });
+
+            // RAPPORTERA ATT DATA TOGS EMOT - FUNGERAR FÖR BÅDE MOCKDATA OCH ESP32
+            _notificationService.ReportDataReceived();
+
+            // LÄGG TILL TEMPERATUR-VARNINGAR
+            await _notificationService.CheckTemperatureWarnings(newSensors);
+
         }
         catch (Exception ex)
         {
@@ -263,6 +308,9 @@ public partial class MainPageViewModel : ObservableObject
                     Sensors.Add(sensor);
                 }
             });
+
+            // ÄVEN VID FALLBACK - RAPPORTERA ATT DATA TOGS EMOT
+            _notificationService.ReportDataReceived();
         }
     }
 
@@ -281,6 +329,7 @@ public partial class MainPageViewModel : ObservableObject
 
             // Hämta uppdateringsintervall från settings
             var updateInterval = await _settingsService.GetUpdateIntervalAsync();
+            System.Diagnostics.Debug.WriteLine($"🔄 Startar timer med intervall: {updateInterval} sekunder");
 
             // Starta timer på main thread
             await MainThread.InvokeOnMainThreadAsync(() =>
@@ -289,7 +338,17 @@ public partial class MainPageViewModel : ObservableObject
                 {
                     try
                     {
+                        // Läsa nya inställningar varje uppdatering
+                        var currentInterval = await _settingsService.GetUpdateIntervalAsync();
                         await LoadTemperaturesAsync();
+
+                        // Om intervall ändrats - starta om timer
+                        if (currentInterval != updateInterval)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"🔄 Intervall ändrat från {updateInterval}s till {currentInterval}s - startar om timer");
+                            _ = Task.Run(async () => await StartAutoUpdateAsync());
+                            return;
+                        }
                     }
                     catch (Exception ex)
                     {

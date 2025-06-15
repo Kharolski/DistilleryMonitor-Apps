@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
-using DistilleryMonitor.Mobile.Services; 
+using DistilleryMonitor.Core.Services; 
 
 namespace DistilleryMonitor.Mobile.ViewModels;
 

@@ -1,5 +1,5 @@
 ﻿using Microsoft.Maui.Graphics;
-using DistilleryMonitor.Mobile.Services;
+using DistilleryMonitor.Core.Services;
 
 namespace DistilleryMonitor.Mobile.Components;
 

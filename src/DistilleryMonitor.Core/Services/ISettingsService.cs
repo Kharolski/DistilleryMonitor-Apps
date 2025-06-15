@@ -1,4 +1,4 @@
-﻿namespace DistilleryMonitor.Mobile.Services
+﻿namespace DistilleryMonitor.Core.Services
 {
     public interface ISettingsService
     {

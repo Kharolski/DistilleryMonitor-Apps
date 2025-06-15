@@ -1,5 +1,5 @@
 ﻿using DistilleryMonitor.Core.Models;
-using DistilleryMonitor.Mobile.Services;
+using DistilleryMonitor.Core.Services;
 
 namespace DistilleryMonitor.Core.Services;
 

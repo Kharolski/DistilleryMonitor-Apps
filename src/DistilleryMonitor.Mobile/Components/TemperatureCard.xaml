@@ -3,36 +3,51 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="DistilleryMonitor.Mobile.Components.TemperatureCard"
              x:Name="TemperatureCardView">
-
+    
     <Frame BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}, ConverterParameter=card}"
            CornerRadius="15"
-           Padding="20,20,20,20"
+           Padding="15,12,15,12"
            HasShadow="True"
-           Margin="0,7.5">
-
+           Margin="0,4"
+           HeightRequest="70">
         <Frame.GestureRecognizers>
             <TapGestureRecognizer Tapped="OnCardTapped" />
         </Frame.GestureRecognizers>
 
-        <Grid ColumnDefinitions="*,Auto">
-            <StackLayout Grid.Column="0">
-                <Label Text="{Binding Name}"
-                       FontSize="20"
-                       FontAttributes="Bold"
-                       TextColor="White" />
-                <Label Text="{Binding Temperature, StringFormat='{0:F1}°C'}"
-                       FontSize="32"
-                       FontAttributes="Bold"
-                       TextColor="White" />
-                <Label Text="{Binding Status}"
-                       FontSize="14"
-                       TextColor="#ddd" />
-            </StackLayout>
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalOptions="Center">
 
-            <Ellipse Grid.Column="1"
+            <!-- Sensor namn -->
+            <Label Grid.Column="0"
+                   Text="{Binding Name}"
+                   FontSize="16"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   VerticalOptions="Center"
+                   MinimumWidthRequest="70" />
+
+            <!-- Temperatur (stor) -->
+            <Label Grid.Column="1"
+                   Text="{Binding Temperature, StringFormat='{0:F1}°C'}"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+
+            <!-- Status text -->
+            <Label Grid.Column="2"
+                   Text="{Binding Status}"
+                   FontSize="12"
+                   TextColor="#ddd"
+                   VerticalOptions="Center"
+                   HorizontalOptions="End"
+                   Margin="0,0,10,0" />
+
+            <!-- Status indikator -->
+            <Ellipse Grid.Column="3"
                      Fill="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
-                     WidthRequest="20"
-                     HeightRequest="20"
+                     WidthRequest="16"
+                     HeightRequest="16"
                      VerticalOptions="Center" />
         </Grid>
     </Frame>

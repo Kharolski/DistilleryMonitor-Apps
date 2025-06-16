@@ -23,6 +23,7 @@ namespace DistilleryMonitor.Mobile
             // Registrera services för Dependency Injection
             builder.Services.AddSingleton<HttpClient>();
             builder.Services.AddSingleton<ISettingsService, SettingsService>();
+            builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
             builder.Services.AddSingleton<ApiService>();
             builder.Services.AddSingleton<IAppNotificationService, AppNotificationService>();
 

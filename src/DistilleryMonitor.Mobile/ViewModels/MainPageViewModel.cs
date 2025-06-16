@@ -9,32 +9,85 @@ namespace DistilleryMonitor.Mobile.ViewModels;
 
 public partial class MainPageViewModel : ObservableObject
 {
+    #region Fields & Services
+
     private readonly ApiService _apiService;
     private readonly ISettingsService _settingsService;
     private readonly MockDataService _mockDataService;
     private readonly IAppNotificationService _notificationService;
+    private readonly IDatabaseService _databaseService;
     private Timer? _updateTimer;
+
+    #endregion
+
+    #region Observable Properties
 
     [ObservableProperty] private bool isLoading = false;
     [ObservableProperty] private bool isConnected = false;
     [ObservableProperty] private string connectionStatus = "Ansluter...";
     [ObservableProperty] private ObservableCollection<TemperatureReading> sensors = new();
     [ObservableProperty] private bool useMockData = false;
+    [ObservableProperty] private List<TemperatureHistory> historyData = new();
 
-    // Ta emot MockDataService via DI 
+    #endregion
+
+    #region Constructor & Initialization
+
     public MainPageViewModel(ApiService apiService, ISettingsService settingsService,
-                          MockDataService mockDataService, IAppNotificationService notificationService)
+                          MockDataService mockDataService, IAppNotificationService notificationService,
+                          IDatabaseService databaseService) 
     {
         _apiService = apiService;
         _settingsService = settingsService;
         _mockDataService = mockDataService;
-        _notificationService = notificationService; 
+        _notificationService = notificationService;
+        _databaseService = databaseService; 
 
         // Ladda mock data setting
         _ = Task.Run(async () => await LoadSettingsAsync());
 
         // Fråga om notifikationer vid första start
         _ = Task.Run(async () => await CheckNotificationPermissionOnStartup());
+
+        // Initiera databas 
+        _ = Task.Run(async () => await InitializeDatabaseAsync());
+    }
+
+    /// <summary>
+    /// Initiera databas vid app-start
+    /// </summary>
+    private async Task InitializeDatabaseAsync()
+    {
+        try
+        {
+            await _databaseService.InitializeAsync();
+
+            // Kolla om vi ska fråga om ny process
+            bool shouldPrompt = await _databaseService.ShouldPromptForNewProcessAsync();
+            if (shouldPrompt)
+            {
+                var lastData = await _databaseService.GetLastDataTimestampAsync();
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    bool startNew = await Application.Current.MainPage.DisplayAlert(
+                        "🆕 Ny Destillation?",
+                        $"Senaste data är från {lastData:yyyy-MM-dd HH:mm}.\n\nVill du starta en ny destillationsprocess?\n(Detta raderar all gammal historik)",
+                        "Ja, starta ny",
+                        "Nej, fortsätt"
+                    );
+
+                    if (startNew)
+                    {
+                        await _databaseService.ClearAllHistoryAsync();
+                        await Application.Current.MainPage.DisplayAlert("✅", "Historik rensad! Redo för ny destillation.", "OK");
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Databas init fel: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -45,8 +98,6 @@ public partial class MainPageViewModel : ObservableObject
         try
         {
             UseMockData = await _settingsService.GetUseMockDataAsync();
-
-            // Uppdatera connection status baserat på mock data setting
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 if (UseMockData)
@@ -69,10 +120,8 @@ public partial class MainPageViewModel : ObservableObject
     {
         try
         {
-            await Task.Delay(2000); // Vänta 2 sek så appen hinner ladda
-
+            await Task.Delay(2000);
             bool hasPermission = await _notificationService.RequestPermissionAsync();
-
             if (!hasPermission)
             {
                 await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -83,7 +132,6 @@ public partial class MainPageViewModel : ObservableObject
                         "Ja, aktivera",
                         "Nej tack"
                     );
-
                     if (userWants)
                     {
                         await _notificationService.RequestPermissionAsync();
@@ -97,6 +145,10 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
+    #endregion
+
+    #region Commands
+
     /// <summary>
     /// Manuell uppdatering för knappen - visar loading
     /// </summary>
@@ -106,15 +158,11 @@ public partial class MainPageViewModel : ObservableObject
         try
         {
             IsLoading = true;
-
-            // Ladda senaste inställningar först
             await LoadSettingsAsync();
 
             if (UseMockData)
             {
                 ConnectionStatus = "Uppdaterar testdata...";
-
-                // Använder MockDataService Settings!
                 var response = await _mockDataService.GetTemperaturesAsync();
                 if (response != null)
                 {
@@ -144,9 +192,10 @@ public partial class MainPageViewModel : ObservableObject
                 else
                 {
                     IsConnected = false;
-                    //ConnectionStatus = "Ingen anslutning";
                 }
             }
+
+            await LoadHistoryDataAsync();
         }
         catch (Exception ex)
         {
@@ -164,12 +213,10 @@ public partial class MainPageViewModel : ObservableObject
     {
         try
         {
-            // Ladda inställningar först
             await LoadSettingsAsync();
 
             if (UseMockData)
             {
-                // MOCK DATA MODE - Nu med Settings integration!
                 if (!IsConnected)
                 {
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -182,7 +229,6 @@ public partial class MainPageViewModel : ObservableObject
                 if (response != null)
                 {
                     await UpdateSensors(response.Sensors);
-
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
                         IsConnected = true;
@@ -192,7 +238,6 @@ public partial class MainPageViewModel : ObservableObject
             }
             else
             {
-                // REAL ESP32 MODE
                 if (!IsConnected)
                 {
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -205,7 +250,6 @@ public partial class MainPageViewModel : ObservableObject
                 if (response != null)
                 {
                     await UpdateSensors(response.Sensors);
-
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
                         IsConnected = true;
@@ -222,6 +266,8 @@ public partial class MainPageViewModel : ObservableObject
                     });
                 }
             }
+
+            await LoadHistoryDataAsync();
         }
         catch (Exception ex)
         {
@@ -229,20 +275,21 @@ public partial class MainPageViewModel : ObservableObject
             {
                 IsConnected = false;
                 ConnectionStatus = "Anslutningsfel";
-
-                // Rensa sensorer om inte mock data
                 if (!UseMockData)
                 {
                     Sensors.Clear();
                 }
             });
-
             Console.WriteLine($"LoadTemperaturesAsync error: {ex}");
         }
     }
 
+    #endregion
+
+    #region Data Updates & Database
+
     /// <summary>
-    /// Uppdatering av sensorer - förhindrar index-fel
+    /// Uppdatering av sensorer - förhindrar index-fel + sparar i databas
     /// </summary>
     private async Task UpdateSensors(List<TemperatureReading> newSensors)
     {
@@ -257,7 +304,6 @@ public partial class MainPageViewModel : ObservableObject
                     var existingSensor = Sensors.FirstOrDefault(s => s.Id == newSensor.Id);
                     if (existingSensor != null)
                     {
-                        // SÄKER uppdatering - kontrollera att index fortfarande finns
                         var index = Sensors.IndexOf(existingSensor);
                         if (index >= 0 && index < Sensors.Count)
                         {
@@ -265,19 +311,16 @@ public partial class MainPageViewModel : ObservableObject
                         }
                         else
                         {
-                            // Index inte giltigt - ta bort och lägg till igen
                             Sensors.Remove(existingSensor);
                             Sensors.Add(newSensor);
                         }
                     }
                     else
                     {
-                        // Ny sensor
                         Sensors.Add(newSensor);
                     }
                 }
 
-                // Ta bort sensorer som inte längre finns
                 var sensorsToRemove = Sensors.Where(s => !newSensors.Any(rs => rs.Id == s.Id)).ToList();
                 foreach (var sensorToRemove in sensorsToRemove)
                 {
@@ -288,18 +331,26 @@ public partial class MainPageViewModel : ObservableObject
                 }
             });
 
-            // RAPPORTERA ATT DATA TOGS EMOT - FUNGERAR FÖR BÅDE MOCKDATA OCH ESP32
+            // sparar i databas (background task)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _databaseService.SaveTemperaturesAsync(newSensors);
+                    System.Diagnostics.Debug.WriteLine($"💾 Sparade {newSensors.Count} temperaturer i databas");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ Databas-sparning fel: {ex.Message}");
+                }
+            });
+
             _notificationService.ReportDataReceived();
-
-            // LÄGG TILL TEMPERATUR-VARNINGAR
             await _notificationService.CheckTemperatureWarnings(newSensors);
-
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error updating sensors: {ex.Message}");
-
-            // Fallback - rensa och lägg till alla igen
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 Sensors.Clear();
@@ -308,11 +359,110 @@ public partial class MainPageViewModel : ObservableObject
                     Sensors.Add(sensor);
                 }
             });
-
-            // ÄVEN VID FALLBACK - RAPPORTERA ATT DATA TOGS EMOT
             _notificationService.ReportDataReceived();
         }
     }
+
+    /// <summary>
+    /// Ladda historisk data för grafen
+    /// </summary>
+    private async Task LoadHistoryDataAsync()
+    {
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("🔍 Försöker ladda historisk data...");
+
+            var historyData = await _databaseService.GetRecentHistoryAsync(120); // 2 timmar
+
+            System.Diagnostics.Debug.WriteLine($"🔍 Hämtade {historyData?.Count ?? 0} rader från databas");
+
+            if (historyData != null && historyData.Any())
+            {
+                var first = historyData.First();
+                var last = historyData.Last();
+                System.Diagnostics.Debug.WriteLine($"🔍 Första post: {first.SensorName} - {first.Temperature}°C - {first.Timestamp}");
+                System.Diagnostics.Debug.WriteLine($"🔍 Sista post: {last.SensorName} - {last.Temperature}°C - {last.Timestamp}");
+
+                var sensorNames = historyData.Select(h => h.SensorName).Distinct().ToList();
+                System.Diagnostics.Debug.WriteLine($"🔍 Sensorer i data: {string.Join(", ", sensorNames)}");
+            }
+
+            // 🆕 ÄNDRA FRÅN 10 MINUTER TILL 2 MINUTER:
+            var filteredData = FilterToInterval(historyData, TimeSpan.FromMinutes(2));
+
+            System.Diagnostics.Debug.WriteLine($"🔍 Efter filtrering: {filteredData?.Count ?? 0} datapunkter");
+
+            HistoryData = filteredData;
+
+            System.Diagnostics.Debug.WriteLine($"📊 Laddade {HistoryData.Count} historiska datapunkter");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Fel vid laddning av historik: {ex.Message}");
+            HistoryData = new List<TemperatureHistory>();
+        }
+    }
+
+    /// <summary>
+    /// Filtrera data till specificerat intervall
+    /// </summary>
+    private List<TemperatureHistory> FilterToInterval(List<TemperatureHistory> data, TimeSpan interval)
+    {
+        if (data == null || !data.Any())
+            return new List<TemperatureHistory>();
+
+        var result = new List<TemperatureHistory>();
+
+        // 🆕 GRUPPERA PER SENSOR FÖRST:
+        var sensorGroups = data.GroupBy(d => d.SensorName);
+
+        foreach (var sensorGroup in sensorGroups)
+        {
+            var sensorData = sensorGroup.OrderBy(d => d.Timestamp).ToList();
+            var sensorName = sensorGroup.Key;
+
+            System.Diagnostics.Debug.WriteLine($"🔍 Filtrerar {sensorName}: {sensorData.Count} rader");
+
+            if (!sensorData.Any())
+                continue;
+
+            var startTime = sensorData.First().Timestamp;
+            var lastAddedTime = DateTime.MinValue;
+
+            foreach (var item in sensorData)
+            {
+                // Lägg till första posten
+                if (lastAddedTime == DateTime.MinValue)
+                {
+                    result.Add(item);
+                    lastAddedTime = item.Timestamp;
+                    continue;
+                }
+
+                // Lägg till om tillräckligt tid har gått
+                if (item.Timestamp - lastAddedTime >= interval)
+                {
+                    result.Add(item);
+                    lastAddedTime = item.Timestamp;
+                }
+            }
+
+            // Lägg alltid till sista posten för varje sensor
+            var lastItem = sensorData.Last();
+            if (lastItem.Timestamp != lastAddedTime)
+            {
+                result.Add(lastItem);
+            }
+
+            var sensorFiltered = result.Count(r => r.SensorName == sensorName);
+            System.Diagnostics.Debug.WriteLine($"🔍 {sensorName} efter filtrering: {sensorFiltered} punkter");
+        }
+
+        return result.OrderBy(r => r.Timestamp).ToList();
+    }
+    #endregion
+
+    #region Auto Update Timer
 
     /// <summary>
     /// Startar automatisk uppdatering med dynamiskt intervall
@@ -321,28 +471,21 @@ public partial class MainPageViewModel : ObservableObject
     {
         try
         {
-            // Stoppa befintlig timer först
             StopAutoUpdate();
-
-            // Ladda data första gången
             await LoadTemperaturesAsync();
 
-            // Hämta uppdateringsintervall från settings
             var updateInterval = await _settingsService.GetUpdateIntervalAsync();
             System.Diagnostics.Debug.WriteLine($"🔄 Startar timer med intervall: {updateInterval} sekunder");
 
-            // Starta timer på main thread
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 _updateTimer = new Timer(async _ =>
                 {
                     try
                     {
-                        // Läsa nya inställningar varje uppdatering
                         var currentInterval = await _settingsService.GetUpdateIntervalAsync();
                         await LoadTemperaturesAsync();
 
-                        // Om intervall ändrats - starta om timer
                         if (currentInterval != updateInterval)
                         {
                             System.Diagnostics.Debug.WriteLine($"🔄 Intervall ändrat från {updateInterval}s till {currentInterval}s - startar om timer");
@@ -376,8 +519,14 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
+    #endregion
+
+    #region Cleanup
+
     public void Dispose()
     {
         StopAutoUpdate();
     }
+
+    #endregion
 }

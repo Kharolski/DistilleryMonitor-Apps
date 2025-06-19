@@ -28,7 +28,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
             SearchForDevicesCommand = new Command(async () => await SearchForDevicesAsync());
             TestConnectionCommand = new Command(async () => await TestConnectionAsync());
             SaveSettingsCommand = new Command(async () => await SaveSettingsAsync());
-            TestNotificationCommand = new Command(async () => await TestNotificationAsync());
 
             // Load saved settings
             _ = Task.Run(async () => await LoadSettingsAsync());
@@ -178,6 +177,8 @@ namespace DistilleryMonitor.Mobile.ViewModels
             }
         }
 
+
+
         // 5 sekunder för kritisk övervakning
         private int _sensorTimeoutSeconds = 5;
         public int SensorTimeoutSeconds
@@ -196,7 +197,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
         public ICommand SearchForDevicesCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand SaveSettingsCommand { get; }
-        public ICommand TestNotificationCommand { get; }
 
         #endregion
 
@@ -293,7 +293,9 @@ namespace DistilleryMonitor.Mobile.ViewModels
         #endregion
 
         #region Methods - Settings Management
-
+        /// <summary>
+        /// Laddar alla app-inställningar från lagring och uppdaterar UI
+        /// </summary>
         private async Task LoadSettingsAsync()
         {
             try
@@ -321,68 +323,115 @@ namespace DistilleryMonitor.Mobile.ViewModels
             }
         }
 
+        /// <summary>
+        /// Sparar alla app-inställningar och hanterar notifikations-permissions
+        /// </summary>
         private async Task SaveSettingsAsync()
         {
             try
             {
+                bool wasNotificationsEnabled = await _settingsService.GetNotificationsEnabledAsync();
+                bool willEnableNotifications = NotificationsEnabled && !wasNotificationsEnabled;
+
                 // Spara alla inställningar
                 await _settingsService.SetEsp32IpAsync(ManualIpAddress);
                 await _settingsService.SetPortAsync(int.TryParse(Port, out int p) ? p : 80);
                 await _settingsService.SetUseMockDataAsync(UseMockData);
                 await _settingsService.SetUpdateIntervalAsync((int)UpdateInterval);
                 await _settingsService.SetNotificationsEnabledAsync(NotificationsEnabled);
-
-                // Uppdatera ApiService med ny IP
                 await _apiService.SetEsp32IpAsync(ManualIpAddress);
 
-                // Show success message
-                ConnectionTestResult = "✅ Inställningar sparade!";
-                ConnectionTestColor = "#28a745";
+                if (willEnableNotifications)
+                {
+                    ConnectionTestResult = "🔔 Kollar notifikationstillstånd...";
+                    ConnectionTestColor = "#ffc107";
 
-                await Task.Delay(3000);
+                    bool hasSystemPermission = await _notificationService.HasPermissionAsync();
+
+                    if (hasSystemPermission)
+                    {
+                        // Mobilen har redan permission - aktivera direkt
+                        await _notificationService.ShowNotificationAsync(
+                            "🎉 Notifikationer aktiverade!",
+                            "Du kommer nu få varningar vid kritiska temperaturer.",
+                            false);
+                        ConnectionTestResult = "✅ Inställningar sparade! Notifikationer aktiverade.";
+                        ConnectionTestColor = "#28a745";
+                    }
+                    else
+                    {
+                        ConnectionTestResult = "🔔 Begär notifikationstillstånd...";
+                        ConnectionTestColor = "#ffc107";
+
+                        bool permissionGranted = await _notificationService.RequestPermissionAsync();
+
+                        if (permissionGranted)
+                        {
+                            // ✅ Permission godkänd
+                            await _notificationService.ShowNotificationAsync(
+                                "🎉 Notifikationer aktiverade!",
+                                "Du kommer nu få varningar vid kritiska temperaturer.",
+                                false);
+                            ConnectionTestResult = "✅ Inställningar sparade! Notifikationer aktiverade.";
+                            ConnectionTestColor = "#28a745";
+                        }
+                        else
+                        {
+                            // ❌ Permission nekad - erbjud direkt hjälp
+                            await _settingsService.SetNotificationsEnabledAsync(false);
+                            NotificationsEnabled = false;
+                            OnPropertyChanged(nameof(NotificationsEnabled));
+
+                            // Erbjud öppna inställningar direkt
+                            await MainThread.InvokeOnMainThreadAsync(async () =>
+                            {
+                                bool openSettings = await Application.Current.MainPage.DisplayAlert(
+                                    "⚠️ Notifikationer blockerade",
+                                    "Notifikationer är avstängda i Android-inställningar.\n\n" +
+                                    "Detta behövs för temperaturvarningar vid destillation!\n\n" +
+                                    "Vill du öppna inställningar för att aktivera dem?",
+                                    "Ja, öppna inställningar",
+                                    "Nej, senare"
+                                );
+
+                                if (openSettings)
+                                {
+                                    await _notificationService.OpenAppSettingsAsync();
+
+                                    // Instruktion efter öppningen
+                                    await Application.Current.MainPage.DisplayAlert(
+                                        "📱 Aktivera notifikationer",
+                                        "I inställningar som öppnades:\n\n" +
+                                        "✅ Aktivera 'Notifikationer' eller 'Notifications'\n" +
+                                        "✅ Kom sedan tillbaka hit och försök igen",
+                                        "OK"
+                                    );
+                                }
+                            });
+
+                            ConnectionTestResult = "⚠️ Öppna Android-inställningar och aktivera notifikationer.";
+                            ConnectionTestColor = "#ffc107";
+                        }
+                    }
+                }
+                else
+                {
+                    ConnectionTestResult = "✅ Inställningar sparade!";
+                    ConnectionTestColor = "#28a745";
+                }
+
+                await Task.Delay(4000);
                 ConnectionTestResult = "";
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ SaveSettings error: {ex.Message}");
                 ConnectionTestResult = $"❌ Kunde inte spara: {ex.Message}";
                 ConnectionTestColor = "#dc3545";
             }
         }
 
-        private async Task TestNotificationAsync()
-        {
-            try
-            {
-                // Först be om tillstånd
-                bool hasPermission = await _notificationService.RequestPermissionAsync();
 
-                if (!hasPermission)
-                {
-                    ConnectionTestResult = "❌ Notifikationstillstånd nekades";
-                    ConnectionTestColor = "#dc3545";
-                    return;
-                }
-
-                // Skicka test-notifikation
-                await _notificationService.ShowNotificationAsync(
-                    "🧪 Test Notifikation",
-                    "Notifikationer fungerar perfekt!",
-                    false);
-
-                // Visa bekräftelse
-                ConnectionTestResult = "✅ Test-notifikation skickad!";
-                ConnectionTestColor = "#28a745";
-
-                // Rensa efter 3 sekunder
-                await Task.Delay(3000);
-                ConnectionTestResult = "";
-            }
-            catch (Exception ex)
-            {
-                ConnectionTestResult = $"❌ Notifikationsfel: {ex.Message}";
-                ConnectionTestColor = "#dc3545";
-            }
-        }
         #endregion
 
         #region INotifyPropertyChanged

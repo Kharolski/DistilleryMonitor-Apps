@@ -116,25 +116,130 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Kontrollerar och konfigurerar notifikationstillstånd vid appstart.
+    /// Hanterar både Android-systemtillstånd och app-interna inställningar.
+    /// Guidar användaren genom aktiveringsprocessen vid första användning.
+    /// </summary>
     private async Task CheckNotificationPermissionOnStartup()
     {
         try
         {
             await Task.Delay(2000);
-            bool hasPermission = await _notificationService.RequestPermissionAsync();
-            if (!hasPermission)
+
+            // 1. Kolla Mobilens - permission först
+            bool hasSystemPermission = await _notificationService.HasPermissionAsync();
+            System.Diagnostics.Debug.WriteLine($"🔔 System permission status: {hasSystemPermission}");
+
+            if (hasSystemPermission)
             {
+                // Mobil - permission = ON
+                bool appNotificationsEnabled = await _settingsService.GetNotificationsEnabledAsync();
+
+                if (appNotificationsEnabled)
+                {
+                    // App - Notis = ON → Gör ingenting
+                }
+                else
+                {
+                    // App - notifikation = OFF → Fråga om aktivering
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        bool userWantsToEnable = await Application.Current.MainPage.DisplayAlert(
+                            "🔔 Aktivera notifikationer?",
+                            "Notifikationer är tillåtna på din telefon men avstängda i appen.\n\n" +
+                            "Vill du aktivera notifikationer för att få temperaturvarningar?",
+                            "Ja, aktivera",
+                            "Nej tack"
+                        );
+
+                        if (userWantsToEnable)
+                        {
+                            // JA → Aktivera app-notis + spara
+                            await _settingsService.SetNotificationsEnabledAsync(true);
+                            System.Diagnostics.Debug.WriteLine("✅ App-notifikationer aktiverade av användaren");
+
+                            await Application.Current.MainPage.DisplayAlert(
+                                "✅ Notifikationer aktiverade!",
+                                "Du kommer nu få varningar vid kritiska temperaturer.",
+                                "OK"
+                            );
+
+                        }
+                        else
+                        {
+                            // NEJ → Tillbaka till main (gör ingenting)
+                            System.Diagnostics.Debug.WriteLine("📱 Användaren valde att inte aktivera app-notifikationer");
+                        }
+                    });
+                }
+            }
+            else
+            {
+                // Mobil - permission = OFF 
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
-                    bool userWants = await Application.Current.MainPage.DisplayAlert(
-                        "🔔 Notifikationer",
-                        "Vill du få varningar när temperaturer blir för höga?\n\nDetta hjälper dig övervaka destillationen säkert.",
-                        "Ja, aktivera",
-                        "Nej tack"
+                    bool userWantsNotifications = await Application.Current.MainPage.DisplayAlert(
+                        "🔔 Temperaturvarningar",
+                        "För säker destillation behöver appen skicka temperaturvarningar.\n\n" +
+                        "Android kommer fråga om tillåtelse för notifikationer.\n" +
+                        "⚠️ VIKTIGT: Tryck 'Tillåt' för att få varningar!\n\n" +
+                        "Vill du också aktivera notifikationer i appen?",
+                        "Ja, aktivera allt",
+                        "Bara Android-tillåtelse"
                     );
-                    if (userWants)
+
+                    // Begär permission oavsett val
+                    bool permissionGranted = await _notificationService.RequestPermissionAsync();
+                    System.Diagnostics.Debug.WriteLine($"🔔 Permission result: {permissionGranted}");
+
+                    if (permissionGranted)
                     {
-                        await _notificationService.RequestPermissionAsync();
+                        // Mobil - permission godkänd
+                        if (userWantsNotifications)
+                        {
+                            // JA → Aktivera både mobil och app
+                            await _settingsService.SetNotificationsEnabledAsync(true);
+                            System.Diagnostics.Debug.WriteLine("✅ Både mobil och app-notifikationer aktiverade");
+
+                            await Application.Current.MainPage.DisplayAlert(
+                                "✅ Notifikationer aktiverade!",
+                                "Du kommer nu få varningar vid kritiska temperaturer.",
+                                "OK"
+                            );
+
+                        }
+                        else
+                        {
+                            // NEJ → Bara mobil-permission, app avstängd
+                            await _settingsService.SetNotificationsEnabledAsync(false);
+                            System.Diagnostics.Debug.WriteLine("📱 Mobil-permission aktiverad, app-notifikationer avstängda");
+
+                            await Application.Current.MainPage.DisplayAlert(
+                                "📱 Permission aktiverad",
+                                "Mobil-permission är aktiverad. Du kan aktivera notifikationer senare i inställningar.",
+                                "OK"
+                            );
+                        }
+                    }
+                    else
+                    {
+                        // ❌ Mobil - permission nekad
+                        await _settingsService.SetNotificationsEnabledAsync(false);
+                        System.Diagnostics.Debug.WriteLine("❌ Mobil-permission nekad");
+
+                        // Erbjud manuell aktivering
+                        bool openSettings = await Application.Current.MainPage.DisplayAlert(
+                            "⚠️ Permission nekad",
+                            "Notifikationer blockerades. Vill du öppna inställningar för att aktivera dem manuellt?",
+                            "Ja, öppna inställningar",
+                            "Nej, hoppa över"
+                        );
+
+                        if (openSettings)
+                        {
+                            await _notificationService.OpenAppSettingsAsync();
+                        }
                     }
                 });
             }
@@ -337,7 +442,6 @@ public partial class MainPageViewModel : ObservableObject
                 try
                 {
                     await _databaseService.SaveTemperaturesAsync(newSensors);
-                    System.Diagnostics.Debug.WriteLine($"💾 Sparade {newSensors.Count} temperaturer i databas");
                 }
                 catch (Exception ex)
                 {
@@ -345,8 +449,17 @@ public partial class MainPageViewModel : ObservableObject
                 }
             });
 
-            _notificationService.ReportDataReceived();
-            await _notificationService.CheckTemperatureWarnings(newSensors);
+            // Kolla notifikations - inställningar först
+            bool notificationsEnabled = await _settingsService.GetNotificationsEnabledAsync();
+            if (notificationsEnabled)
+            {
+                _notificationService.ReportDataReceived();
+                await _notificationService.CheckTemperatureWarnings(newSensors);
+            }
+            else
+            {
+                // Notifikationer avstängda
+            }
         }
         catch (Exception ex)
         {
@@ -370,31 +483,14 @@ public partial class MainPageViewModel : ObservableObject
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("🔍 Försöker ladda historisk data...");
-
             var historyData = await _databaseService.GetRecentHistoryAsync(120); // 2 timmar
 
-            System.Diagnostics.Debug.WriteLine($"🔍 Hämtade {historyData?.Count ?? 0} rader från databas");
+            // Debug: att veta hur mycket data som laddas
+            System.Diagnostics.Debug.WriteLine($"🔍 Hämtade {historyData?.Count ?? 0} historiska poster");
 
-            if (historyData != null && historyData.Any())
-            {
-                var first = historyData.First();
-                var last = historyData.Last();
-                System.Diagnostics.Debug.WriteLine($"🔍 Första post: {first.SensorName} - {first.Temperature}°C - {first.Timestamp}");
-                System.Diagnostics.Debug.WriteLine($"🔍 Sista post: {last.SensorName} - {last.Temperature}°C - {last.Timestamp}");
-
-                var sensorNames = historyData.Select(h => h.SensorName).Distinct().ToList();
-                System.Diagnostics.Debug.WriteLine($"🔍 Sensorer i data: {string.Join(", ", sensorNames)}");
-            }
-
-            // 🆕 ÄNDRA FRÅN 10 MINUTER TILL 2 MINUTER:
             var filteredData = FilterToInterval(historyData, TimeSpan.FromMinutes(2));
 
-            System.Diagnostics.Debug.WriteLine($"🔍 Efter filtrering: {filteredData?.Count ?? 0} datapunkter");
-
             HistoryData = filteredData;
-
-            System.Diagnostics.Debug.WriteLine($"📊 Laddade {HistoryData.Count} historiska datapunkter");
         }
         catch (Exception ex)
         {
@@ -413,15 +509,13 @@ public partial class MainPageViewModel : ObservableObject
 
         var result = new List<TemperatureHistory>();
 
-        // 🆕 GRUPPERA PER SENSOR FÖRST:
+        // Gruppera per sensor först
         var sensorGroups = data.GroupBy(d => d.SensorName);
 
         foreach (var sensorGroup in sensorGroups)
         {
             var sensorData = sensorGroup.OrderBy(d => d.Timestamp).ToList();
             var sensorName = sensorGroup.Key;
-
-            System.Diagnostics.Debug.WriteLine($"🔍 Filtrerar {sensorName}: {sensorData.Count} rader");
 
             if (!sensorData.Any())
                 continue;
@@ -453,11 +547,7 @@ public partial class MainPageViewModel : ObservableObject
             {
                 result.Add(lastItem);
             }
-
-            var sensorFiltered = result.Count(r => r.SensorName == sensorName);
-            System.Diagnostics.Debug.WriteLine($"🔍 {sensorName} efter filtrering: {sensorFiltered} punkter");
         }
-
         return result.OrderBy(r => r.Timestamp).ToList();
     }
     #endregion
@@ -473,9 +563,7 @@ public partial class MainPageViewModel : ObservableObject
         {
             StopAutoUpdate();
             await LoadTemperaturesAsync();
-
             var updateInterval = await _settingsService.GetUpdateIntervalAsync();
-            System.Diagnostics.Debug.WriteLine($"🔄 Startar timer med intervall: {updateInterval} sekunder");
 
             await MainThread.InvokeOnMainThreadAsync(() =>
             {

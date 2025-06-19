@@ -47,7 +47,6 @@
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
-		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
@@ -63,7 +62,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiImage Remove="Resources\Images\dotnet_bot.png" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Remove="Platforms\Android\Resources\drawable\tab_background.xml" />
+	  <None Remove="Resources\Images\dotnet_bot.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -99,6 +103,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Models\" />
+	  <Folder Include="Resources\Images\" />
 	</ItemGroup>
 
 </Project>

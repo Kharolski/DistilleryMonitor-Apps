@@ -100,17 +100,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
             }
         }
 
-        private string _port = "80";
-        public string Port
-        {
-            get => _port;
-            set
-            {
-                _port = value;
-                OnPropertyChanged();
-            }
-        }
-
         #endregion
 
         #region Properties - Connection Test
@@ -144,17 +133,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
 
         #region Properties - App Settings
 
-        private bool _useMockData = false; // Default OFF
-        public bool UseMockData
-        {
-            get => _useMockData;
-            set
-            {
-                _useMockData = value;
-                OnPropertyChanged();
-            }
-        }
-
         private double _updateInterval = 3.0; // Default 3 sekunder
         public double UpdateInterval
         {
@@ -176,8 +154,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
                 OnPropertyChanged();
             }
         }
-
-
 
         // 5 sekunder för kritisk övervakning
         private int _sensorTimeoutSeconds = 5;
@@ -210,41 +186,61 @@ namespace DistilleryMonitor.Mobile.ViewModels
                 FoundDevices.Clear();
                 ConnectionTestResult = "";
 
-                // Simulate discovery process with countdown
-                for (int i = 30; i > 0; i--)
+                DiscoveryStatus = "Söker efter temperaturmätare...";
+                bool foundAny = false;
+
+                for (int i = 1; i <= 20; i++)
                 {
-                    DiscoveryStatus = $"Söker efter ESP32 enheter... ({i}/30 sek kvar)";
+                    DiscoveryStatus = $"Söker efter temperaturmätare... ({i}/20)";
 
-                    if (i == 25) // Din riktiga ESP32
+                    // Testa din kända ESP32 IP
+                    if (i == 15) // Halvvägs genom sökningen
                     {
-                        FoundDevices.Add(new Esp32Device
+                        bool isReachable = await _apiService.TestConnectionAsync("192.168.39.156");
+                        if (isReachable)
                         {
-                            Name = "DestillationMonitor",
-                            IpAddress = "192.168.39.156", // ← Din riktiga IP
-                            DisplayName = "DestillationMonitor (192.168.39.156) - RIKTIG ESP32"
-                        });
+                            FoundDevices.Add(new Esp32Device
+                            {
+                                Name = "DestillationMonitor",
+                                IpAddress = "192.168.39.156",
+                                DisplayName = "✅ Temperaturmätare (192.168.39.156)"
+                            });
+                            foundAny = true;
+                        }
                     }
 
-                    if (i == 20) // Mock device för testning
-                    {
-                        FoundDevices.Add(new Esp32Device
-                        {
-                            Name = "DestillationMonitor",
-                            IpAddress = "192.168.39.200", // ← Annan mock IP
-                            DisplayName = "DestillationMonitor (192.168.39.200) - MOCK"
-                        });
-                    }
+                    // Här kan du lägga till fler IP-adresser att testa:
+                    // if (i == 20) { /* testa annan IP */ }
 
-                    await Task.Delay(1000);
+                    await Task.Delay(100); // Snabbare än 1000ms
                 }
 
-                DiscoveryStatus = $"Sökning klar! Hittade {FoundDevices.Count} enheter.";
+                // Visa resultat
+                if (foundAny)
+                {
+                    DiscoveryStatus = $"✅ Hittade {FoundDevices.Count} temperaturmätare!";
+                }
+                else
+                {
+                    DiscoveryStatus = "❌ Inga temperaturmätare hittades - prova manuell anslutning";
+
+                    // Lägg till hjälptext i dropdown
+                    FoundDevices.Add(new Esp32Device
+                    {
+                        Name = "Ingen hittad",
+                        IpAddress = "",
+                        DisplayName = "❌ Inga mätare hittades - använd manuell anslutning nedan"
+                    });
+                }
+
                 await Task.Delay(3000);
                 DiscoveryStatus = "";
             }
             catch (Exception ex)
             {
-                DiscoveryStatus = $"Fel vid sökning: {ex.Message}";
+                DiscoveryStatus = $"❌ Fel vid sökning: {ex.Message}";
+                await Task.Delay(3000);
+                DiscoveryStatus = "";
             }
             finally
             {
@@ -260,33 +256,40 @@ namespace DistilleryMonitor.Mobile.ViewModels
         {
             try
             {
-                ConnectionTestResult = "Testar anslutning...";
+                if (string.IsNullOrEmpty(ManualIpAddress))
+                {
+                    ConnectionTestResult = "❌ Ange IP-adress först";
+                    ConnectionTestColor = "#dc3545";
+                    await Task.Delay(3000);
+                    ConnectionTestResult = "";
+                    return;
+                }
+
+                ConnectionTestResult = $"Testar anslutning till {ManualIpAddress}...";
                 ConnectionTestColor = "#ffc107"; // Yellow
 
-                string ipToTest = !string.IsNullOrEmpty(ManualIpAddress) ? ManualIpAddress : "192.168.1.100";
-
-                // Använd din befintliga ApiService
-                bool isSuccess = await _apiService.TestConnectionAsync(ipToTest);
+                bool isSuccess = await _apiService.TestConnectionAsync(ManualIpAddress);
 
                 if (isSuccess)
                 {
-                    ConnectionTestResult = $"✅ Anslutning lyckades till {ipToTest}:{Port}";
+                    ConnectionTestResult = $"✅ Temperaturmätare svarar på {ManualIpAddress}";
                     ConnectionTestColor = "#28a745"; // Green
                 }
                 else
                 {
-                    ConnectionTestResult = $"❌ Kunde inte ansluta till {ipToTest}:{Port}";
+                    ConnectionTestResult = $"❌ Ingen temperaturmätare på {ManualIpAddress}";
                     ConnectionTestColor = "#dc3545"; // Red
                 }
 
-                // Clear result after 5 seconds
                 await Task.Delay(5000);
                 ConnectionTestResult = "";
             }
             catch (Exception ex)
             {
-                ConnectionTestResult = $"❌ Fel: {ex.Message}";
+                ConnectionTestResult = $"❌ Anslutningsfel: {ex.Message}";
                 ConnectionTestColor = "#dc3545";
+                await Task.Delay(5000);
+                ConnectionTestResult = "";
             }
         }
 
@@ -302,8 +305,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
             {
                 // Använd alla ISettingsService metoder
                 ManualIpAddress = await _settingsService.GetEsp32IpAsync();
-                Port = (await _settingsService.GetPortAsync()).ToString();
-                UseMockData = await _settingsService.GetUseMockDataAsync();
                 UpdateInterval = await _settingsService.GetUpdateIntervalAsync();
                 NotificationsEnabled = await _settingsService.GetNotificationsEnabledAsync();
 
@@ -311,8 +312,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     OnPropertyChanged(nameof(ManualIpAddress));
-                    OnPropertyChanged(nameof(Port));
-                    OnPropertyChanged(nameof(UseMockData));
                     OnPropertyChanged(nameof(UpdateInterval));
                     OnPropertyChanged(nameof(NotificationsEnabled));
                 });
@@ -335,8 +334,7 @@ namespace DistilleryMonitor.Mobile.ViewModels
 
                 // Spara alla inställningar
                 await _settingsService.SetEsp32IpAsync(ManualIpAddress);
-                await _settingsService.SetPortAsync(int.TryParse(Port, out int p) ? p : 80);
-                await _settingsService.SetUseMockDataAsync(UseMockData);
+                await _settingsService.SetPortAsync(80);
                 await _settingsService.SetUpdateIntervalAsync((int)UpdateInterval);
                 await _settingsService.SetNotificationsEnabledAsync(NotificationsEnabled);
                 await _apiService.SetEsp32IpAsync(ManualIpAddress);
@@ -430,7 +428,6 @@ namespace DistilleryMonitor.Mobile.ViewModels
                 ConnectionTestColor = "#dc3545";
             }
         }
-
 
         #endregion
 

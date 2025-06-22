@@ -15,6 +15,7 @@
             <!-- Registrera Converters -->
             <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
             <converters:InvertBoolConverter x:Key="InvertBoolConverter" />
+            <converters:IntToBoolConverter x:Key="IntToBoolConverter" />
             <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
 
         </ResourceDictionary>

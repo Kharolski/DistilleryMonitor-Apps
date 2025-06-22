@@ -15,77 +15,82 @@
                    HorizontalOptions="Center"
                    Margin="0,20,0,30" />
 
-            <!-- ESP32 Anslutning Sektion -->
+            <!-- Temperaturmätare Anslutning Sektion -->
             <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
                 <StackLayout Spacing="15">
-                    <Label Text="🌐 ESP32 Anslutning"
+                    <Label Text="🌡️ Temperaturmätare Anslutning"
                            FontSize="20"
                            FontAttributes="Bold"
                            TextColor="White" />
 
-                    <!-- Auto Discovery Sektion -->
+                    <!-- Förklaring för användaren -->
+                    <Label Text="Anslut till din trådlösa temperaturmätare för att övervaka destillationen."
+                           TextColor="#bbb"
+                           FontSize="12"
+                           FontAttributes="Italic" />
+
+                    <!-- Välj Temperaturmätare Sektion -->
                     <StackLayout Spacing="10">
-                        <Label Text="Automatisk upptäckt:"
-                               TextColor="#ddd" />
-                        <!-- Sök Knapp -->
-                        <Button Text="🔍 Sök efter ESP32 enheter"
-                                BackgroundColor="#28a745"
-                                TextColor="White"
-                                CornerRadius="8"
-                                Command="{Binding SearchForDevicesCommand}" />
-                        <!-- Discovery Status -->
-                        <Label Text="{Binding DiscoveryStatus}"
-                               TextColor="#ffc107"
-                               FontSize="14"
-                               IsVisible="{Binding IsSearching}" />
-                        <!-- Enheter Dropdown -->
-                        <Label Text="Hittade enheter:"
+                        <Label Text="Välj temperaturmätare:"
                                TextColor="#ddd"
-                               IsVisible="{Binding HasFoundDevices}" />
-                        <Picker Title="Välj ESP32 enhet"
+                               FontSize="16"
+                               FontAttributes="Bold" />
+
+                        <!-- Dropdown med enheter -->
+                        <Picker Title="Välj från listan eller uppdatera"
                                 ItemsSource="{Binding FoundDevices}"
                                 ItemDisplayBinding="{Binding DisplayName}"
                                 SelectedItem="{Binding SelectedDevice}"
                                 BackgroundColor="#0f3460"
                                 TextColor="White"
-                                TitleColor="#888"
-                                IsVisible="{Binding HasFoundDevices}" />
+                                TitleColor="#888" />
+
+                        <!-- Uppdatera Knapp -->
+                        <Button Text="🔄 Uppdatera lista"
+                                BackgroundColor="#28a745"
+                                TextColor="White"
+                                CornerRadius="8"
+                                Command="{Binding SearchForDevicesCommand}"
+                                FontSize="14"
+                                HeightRequest="40" />
+
+                        <!-- Discovery Status -->
+                        <Label Text="{Binding DiscoveryStatus}"
+                               TextColor="#ffc107"
+                               FontSize="12"
+                               HorizontalOptions="Center"
+                               IsVisible="{Binding IsSearching}" />
                     </StackLayout>
 
                     <!-- Separator -->
                     <BoxView HeightRequest="1"
                              BackgroundColor="#333"
-                             Margin="0,10" />
+                             Margin="0,15" />
 
                     <!-- Manuell IP Sektion -->
                     <StackLayout Spacing="10">
-                        <Label Text="Eller ange manuellt:"
+                        <Label Text="Eller anslut manuellt:"
                                TextColor="#ddd"
                                FontSize="16"
                                FontAttributes="Bold" />
-                        <Label Text="IP-Adress:"
-                               TextColor="#ddd" />
+
+                        <Label Text="Mätarens IP-adress:"
+                                TextColor="#ddd" />
+
                         <Entry Text="{Binding ManualIpAddress}"
-                               Placeholder="192.168.1.100"
+                               Placeholder="t.ex. 192.168.1.100"
                                PlaceholderColor="#888"
                                TextColor="White"
                                BackgroundColor="#0f3460" />
-                        <Label Text="Port:"
-                               TextColor="#ddd" />
-                        <Entry Text="{Binding Port}"
-                               Placeholder="80"
-                               PlaceholderColor="#888"
-                               TextColor="White"
-                               BackgroundColor="#0f3460"
-                               Keyboard="Numeric" />
                     </StackLayout>
 
                     <!-- Test Anslutning -->
-                    <Button Text="⚡ Testa anslutning"
+                    <Button Text="⚡ Testa anslutning till mätare"
                             BackgroundColor="#17a2b8"
                             TextColor="White"
                             CornerRadius="8"
                             Command="{Binding TestConnectionCommand}" />
+
                     <!-- Connection Status -->
                     <Label Text="{Binding ConnectionTestResult}"
                            TextColor="{Binding ConnectionTestColor}"
@@ -96,30 +101,19 @@
                 </StackLayout>
             </Frame>
 
+
             <!-- App Inställningar Sektion -->
             <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
                 <StackLayout Spacing="15">
                     <Label Text="📱 App Inställningar"
-                           FontSize="20"
+                           FontSize="20" 
                            FontAttributes="Bold"
                            TextColor="White" />
-
-                    <!-- Mock Data Toggle -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <Label Grid.Column="0"
-                               Text="🧪 Mock Data (Testdata)"
-                               TextColor="#ddd"
-                               VerticalOptions="Center" />
-                        <Switch Grid.Column="1"
-                                IsToggled="{Binding UseMockData}"
-                                OnColor="#28a745"
-                                ThumbColor="White" />
-                    </Grid>
 
                     <!-- Update Interval -->
                     <StackLayout Spacing="5">
                         <Label Text="🔄 Uppdateringsintervall:"
-                               TextColor="#ddd" />
+                               TextColor="#ddd" Margin="0,10,0,0" />
                         <Grid ColumnDefinitions="*,Auto">
                             <Slider Grid.Column="0"
                                     Minimum="1"

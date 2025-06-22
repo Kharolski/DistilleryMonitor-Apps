@@ -1,10 +1,13 @@
-﻿namespace DistilleryMonitor.Mobile.Views;
+﻿using DistilleryMonitor.Mobile.ViewModels;
 
-public partial class AboutPage : ContentPage
+namespace DistilleryMonitor.Mobile.Views
 {
-    public AboutPage()
+    public partial class AboutPage : ContentPage
     {
-        InitializeComponent();
+        public AboutPage(AboutPageViewModel viewModel)
+        {
+            InitializeComponent();
+            BindingContext = viewModel;
+        }
     }
-
 }

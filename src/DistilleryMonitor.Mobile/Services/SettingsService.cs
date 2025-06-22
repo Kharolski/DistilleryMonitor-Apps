@@ -31,7 +31,7 @@ namespace DistilleryMonitor.Mobile.Services
         private const string KYLARE_CRITICAL_TEMP_KEY = "kylare_critical_temp";
 
         // Befintliga defaults
-        private const string DEFAULT_IP = "192.168.7.75";
+        private const string DEFAULT_IP = "";
         private const int DEFAULT_INTERVAL = 3;
         private const bool DEFAULT_AUTO_CONNECT = true;
 
@@ -59,7 +59,12 @@ namespace DistilleryMonitor.Mobile.Services
         #region Befintliga metoder
         public async Task<string> GetEsp32IpAsync()
         {
-            return await SecureStorage.GetAsync(ESP32_IP_KEY) ?? DEFAULT_IP;
+            var ip = await SecureStorage.GetAsync(ESP32_IP_KEY);
+            if (string.IsNullOrEmpty(ip))
+            {
+                return DEFAULT_IP; // Tom sträng
+            }
+            return ip;
         }
 
         public async Task SetEsp32IpAsync(string ipAddress)
@@ -277,8 +282,10 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task<string> GetEsp32BaseUrlAsync()
         {
             var ip = await GetEsp32IpAsync();
-            var port = await GetPortAsync();
-            return $"http://{ip}:{port}";
+            return $"http://{ip}";  // Utan :80
+
+            //var port = await GetPortAsync();
+            //return $"http://{ip}:{port}";
         }
         #endregion
     }

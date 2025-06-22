@@ -27,7 +27,10 @@ namespace DistilleryMonitor.Mobile
             builder.Services.AddSingleton<ApiService>();
             builder.Services.AddSingleton<IAppNotificationService, AppNotificationService>();
 
-            // Registrera MockDataService med ISettingsService
+            // NY: Developer Service
+            builder.Services.AddSingleton<IDeveloperService, DeveloperService>();
+
+            // BEHÅLL TILLFÄLLIGT: MockDataService med ISettingsService
             builder.Services.AddSingleton<MockDataService>(provider =>
                 new MockDataService(provider.GetService<ISettingsService>()));
 
@@ -36,12 +39,14 @@ namespace DistilleryMonitor.Mobile
             builder.Services.AddTransient<TemperatureDetailViewModel>();
             builder.Services.AddTransient<SensorSettingsViewModel>();
             builder.Services.AddTransient<SettingsViewModel>();
+            builder.Services.AddTransient<AboutPageViewModel>();
 
             // Registrera sidor 
             builder.Services.AddTransient<MainPage>();
             builder.Services.AddTransient<TemperatureDetailPage>();
             builder.Services.AddTransient<SensorSettingsPage>();
             builder.Services.AddTransient<SettingsPage>();
+            builder.Services.AddTransient<AboutPage>();
 
 #if ANDROID
             // Registrera custom Shell renderer

@@ -12,7 +12,7 @@ public class ApiService
 {
     private readonly HttpClient _httpClient;
     private readonly ISettingsService _settingsService;
-    private string _baseUrl;
+    private string _baseUrl = "";
 
     /// <summary>
     /// Konstruktor - initialiserar API service med HTTP-klient och settings
@@ -21,13 +21,17 @@ public class ApiService
     {
         _httpClient = httpClient;
         _settingsService = settingsService;
-        _baseUrl = "http://192.168.7.75"; // Fallback IP om settings inte finns
+        _baseUrl = ""; 
 
-        // Ladda sparad IP-adress från settings vid start (asynkront)
+        // Ladda sparad IP-adress från settings vid start
         _ = Task.Run(async () =>
         {
             var savedIp = await _settingsService.GetEsp32IpAsync();
-            _baseUrl = $"http://{savedIp}";
+            if (!string.IsNullOrEmpty(savedIp))
+            {
+                _baseUrl = $"http://{savedIp}";
+                Console.WriteLine($"🔍 ApiService laddad med IP: {_baseUrl}");
+            }
         });
     }
 
@@ -39,6 +43,7 @@ public class ApiService
     {
         await _settingsService.SetEsp32IpAsync(ipAddress);
         _baseUrl = $"http://{ipAddress}";
+        Console.WriteLine($"🔍 ApiService uppdaterad till: {_baseUrl}");
     }
 
     /// <summary>
@@ -61,12 +66,22 @@ public class ApiService
         {
             var testIp = ipAddress ?? await _settingsService.GetEsp32IpAsync();
             var testUrl = $"http://{testIp}/api/temperatures";
+            Console.WriteLine($"🔍 Testar anslutning till: {testUrl}");
 
             var response = await _httpClient.GetAsync(testUrl);
-            return response.IsSuccessStatusCode; // 200 OK = anslutning fungerar
+            Console.WriteLine($"🔍 HTTP Status: {response.StatusCode}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"✅ Fick svar: {content}");
+                return true;
+            }
+            return false;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"❌ TestConnection fel: {ex.Message}");
             return false; // Alla fel = anslutning fungerar inte
         }
     }
@@ -80,16 +95,40 @@ public class ApiService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/temperatures");
-            response.EnsureSuccessStatusCode(); // Kasta exception om HTTP-fel
+            var currentIp = await _settingsService.GetEsp32IpAsync();
+            if (string.IsNullOrEmpty(currentIp))
+            {
+                Console.WriteLine("❌ Ingen ESP32 IP-adress inställd");
+                return null;
+            }
+
+            _baseUrl = $"http://{currentIp}";
+            var url = $"{_baseUrl}/api/temperatures";
+            Console.WriteLine($"🔍 Hämtar temperaturer från: {url}");
+
+            var response = await _httpClient.GetAsync(url);
+            Console.WriteLine($"🔍 HTTP Status: {response.StatusCode}");
+            response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"✅ Fick JSON: {json}");
+
             return JsonSerializer.Deserialize<TemperatureResponse>(json, GetJsonOptions());
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"❌ HTTP Request Error: {ex.Message}");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            Console.WriteLine($"❌ Timeout Error: {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            // Logga fel för debugging
-            Console.WriteLine($"Error getting temperatures: {ex.Message}");
+            Console.WriteLine($"❌ General Error: {ex.Message}");
+            Console.WriteLine($"❌ Error Type: {ex.GetType().Name}");
             return null;
         }
     }
@@ -103,9 +142,14 @@ public class ApiService
     {
         try
         {
+            if (string.IsNullOrEmpty(_baseUrl))
+            {
+                var savedIp = await _settingsService.GetEsp32IpAsync();
+                _baseUrl = $"http://{savedIp}";
+            }
+
             var response = await _httpClient.GetAsync($"{_baseUrl}/api/config");
             response.EnsureSuccessStatusCode();
-
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<ConfigurationResponse>(json, GetJsonOptions());
         }
@@ -126,12 +170,16 @@ public class ApiService
     {
         try
         {
-            // Konvertera C# objekt till JSON
+            if (string.IsNullOrEmpty(_baseUrl))
+            {
+                var savedIp = await _settingsService.GetEsp32IpAsync();
+                _baseUrl = $"http://{savedIp}";
+            }
+
             var json = JsonSerializer.Serialize(config, GetJsonOptions());
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/config", content);
-            return response.IsSuccessStatusCode; // 200 OK = uppdatering lyckades
+            return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {

@@ -12,22 +12,51 @@
     <ScrollView>
         <Grid Padding="20,15,20,20" RowSpacing="15">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />            <!-- Sensor Info Card -->
-                <RowDefinition Height="*" />               <!-- Graph Card -->
-                <RowDefinition Height="Auto" />            <!-- Action Buttons -->
+                <RowDefinition Height="Auto" />              <!-- ESP32 Status -->
+                <RowDefinition Height="Auto" />              <!-- Sensor Info Card -->
+                <RowDefinition Height="*" />                 <!-- Graph Card -->
+                <RowDefinition Height="Auto" />              <!-- Action Buttons -->
             </Grid.RowDefinitions>
 
-            <!-- Sensor Information Card -->
+            <!-- ESP32 Status Bar (endast om inte mock data) -->
             <Frame Grid.Row="0"
+                   BackgroundColor="#16213e"
+                   CornerRadius="10"
+                   Padding="15"
+                   HasShadow="False"
+                   IsVisible="{Binding IsEsp32IntegrationAvailable}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Label Grid.Column="0" 
+                           Text="📡" 
+                           FontSize="16" 
+                           TextColor="White" 
+                           VerticalOptions="Center" />
+                    <Label Grid.Column="1" 
+                           Text="ESP32 Ansluten" 
+                           FontSize="14" 
+                           TextColor="#28a745" 
+                           VerticalOptions="Center" 
+                           Margin="10,0,0,0" />
+                    <Label Grid.Column="2" 
+                           Text="✅" 
+                           FontSize="16" 
+                           TextColor="#28a745" 
+                           VerticalOptions="Center" />
+                </Grid>
+            </Frame>
+
+            <!-- Sensor Information Card -->
+            <Frame Grid.Row="1"
                    BackgroundColor="#333333"
                    CornerRadius="15"
                    Padding="20"
                    HasShadow="True">
                 <Grid RowSpacing="15">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />                     <!-- Temperature -->
-                        <RowDefinition Height="Auto" />                     <!-- Optimal Range -->
-                        <RowDefinition Height="Auto" />                     <!-- Status -->
+                        <RowDefinition Height="Auto" />                      <!-- Temperature -->
+                        <RowDefinition Height="Auto" />                      <!-- Optimal Range -->
+                        <RowDefinition Height="Auto" />                      <!-- Status -->
+                        <RowDefinition Height="Auto" />                      <!-- Data Source -->
                     </Grid.RowDefinitions>
 
                     <!-- Current Temperature -->
@@ -73,12 +102,13 @@
                                TextColor="#e0e0e0"
                                HorizontalOptions="End"
                                VerticalOptions="Center" />
+                        
                         <!-- Status Circle + Text i samma kolumn -->
-                        <StackLayout Grid.Column="1" 
-                                     Orientation="Horizontal" 
+                        <StackLayout Grid.Column="1"
+                                     Orientation="Horizontal"
                                      HorizontalOptions="Start"
                                      VerticalOptions="Center"
-                                     Margin="10,0,0,0">
+                                     Margin="-15,0,0,0">
                             <Ellipse Fill="{Binding StatusColorHex}"
                                      WidthRequest="16"
                                      HeightRequest="16"
@@ -91,24 +121,42 @@
                                    Margin="8,0,0,0" />
                         </StackLayout>
                     </Grid>
+
+                    <!-- Data Source Info -->
+                    <Grid Grid.Row="3" ColumnDefinitions="*,*">
+                        <Label Grid.Column="0"
+                               Text="Datakälla:"
+                               FontSize="14"
+                               TextColor="#999"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center" />
+                        <Label Grid.Column="1"
+                               Text="{Binding UseMockData, Converter={StaticResource MockDataToSourceConverter}}"
+                               FontSize="14"
+                               TextColor="#17a2b8"
+                               HorizontalOptions="Start"
+                               VerticalOptions="Center"
+                               Margin="10,0,0,0" />
+                    </Grid>
                 </Grid>
             </Frame>
 
             <!-- Graph Card -->
-            <Frame Grid.Row="1"
+            <Frame Grid.Row="2"
                    BackgroundColor="#333333"
                    CornerRadius="15"
                    Padding="10"
                    HasShadow="True"
                    MinimumHeightRequest="300">
-                <components:TemperatureGraphView 
-                            Temperature="{Binding Temperature}"
-                            SensorName="{Binding SensorName}"
-                            SettingsService="{Binding SettingsService}"/>
+                <components:TemperatureGraphView
+                        Temperature="{Binding Temperature}"
+                        SensorName="{Binding SensorName}"
+                        SettingsService="{Binding SettingsService}"
+                        ThresholdService="{Binding ThresholdService}"/>
             </Frame>
 
             <!-- Action Buttons -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Grid.Column="0"
                         Text="🔄 Uppdatera"
                         Command="{Binding RefreshCommand}"
@@ -124,6 +172,8 @@
                         CornerRadius="10"
                         HeightRequest="45" />
             </Grid>
+
         </Grid>
     </ScrollView>
 </ContentPage>
+

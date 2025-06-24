@@ -4,12 +4,15 @@ namespace DistilleryMonitor.Mobile.Services
 {
     public class SettingsService : ISettingsService
     {
+        // Event implementation
+        public event EventHandler<TemperatureSettingsChangedEventArgs> TemperatureSettingsChanged;
+
         // Befintliga konstanter
         private const string ESP32_IP_KEY = "esp32_ip";
         private const string UPDATE_INTERVAL_KEY = "update_interval";
         private const string AUTO_CONNECT_KEY = "auto_connect";
 
-        // Nya konstanter för Settings UI
+        // Konstanter för Settings UI
         private const string USE_MOCK_DATA_KEY = "use_mock_data";
         private const string NOTIFICATIONS_ENABLED_KEY = "notifications_enabled";
         private const string ESP32_PORT_KEY = "esp32_port";
@@ -142,6 +145,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKolvOptimalMinAsync(double temperature)
         {
             await SecureStorage.SetAsync(KOLV_OPTIMAL_MIN_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kolv");
         }
 
         public async Task<double> GetKolvWarningTempAsync()
@@ -153,6 +157,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKolvWarningTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(KOLV_WARNING_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kolv");
         }
 
         public async Task<double> GetKolvCriticalTempAsync()
@@ -164,6 +169,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKolvCriticalTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(KOLV_CRITICAL_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kolv");
         }
 
         // Destillat temperaturinställningar
@@ -176,6 +182,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetDestillatOptimalMinAsync(double temperature)
         {
             await SecureStorage.SetAsync(DESTILLAT_OPTIMAL_MIN_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Destillat");
         }
 
         public async Task<double> GetDestillatWarningTempAsync()
@@ -187,6 +194,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetDestillatWarningTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(DESTILLAT_WARNING_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Destillat");
         }
 
         public async Task<double> GetDestillatCriticalTempAsync()
@@ -198,6 +206,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetDestillatCriticalTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(DESTILLAT_CRITICAL_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Destillat");
         }
 
         // Kylare temperaturinställningar
@@ -210,6 +219,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKylareOptimalMinAsync(double temperature)
         {
             await SecureStorage.SetAsync(KYLARE_OPTIMAL_MIN_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kylare");
         }
 
         public async Task<double> GetKylareWarningTempAsync()
@@ -221,6 +231,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKylareWarningTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(KYLARE_WARNING_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kylare");
         }
 
         public async Task<double> GetKylareCriticalTempAsync()
@@ -232,6 +243,7 @@ namespace DistilleryMonitor.Mobile.Services
         public async Task SetKylareCriticalTempAsync(double temperature)
         {
             await SecureStorage.SetAsync(KYLARE_CRITICAL_TEMP_KEY, temperature.ToString());
+            TriggerTemperatureSettingsChanged("Kylare");
         }
 
         #endregion
@@ -286,6 +298,47 @@ namespace DistilleryMonitor.Mobile.Services
 
             //var port = await GetPortAsync();
             //return $"http://{ip}:{port}";
+        }
+
+        /// <summary>
+        /// Triggar event när temperaturinställningar ändras
+        /// </summary>
+        private async void TriggerTemperatureSettingsChanged(string sensorName)
+        {
+            try
+            {
+                var args = new TemperatureSettingsChangedEventArgs
+                {
+                    SensorName = sensorName,
+                    OptimalMin = sensorName switch
+                    {
+                        "Kolv" => await GetKolvOptimalMinAsync(),
+                        "Destillat" => await GetDestillatOptimalMinAsync(),
+                        "Kylare" => await GetKylareOptimalMinAsync(),
+                        _ => 50.0
+                    },
+                    WarningTemp = sensorName switch
+                    {
+                        "Kolv" => await GetKolvWarningTempAsync(),
+                        "Destillat" => await GetDestillatWarningTempAsync(),
+                        "Kylare" => await GetKylareWarningTempAsync(),
+                        _ => 80.0
+                    },
+                    CriticalTemp = sensorName switch
+                    {
+                        "Kolv" => await GetKolvCriticalTempAsync(),
+                        "Destillat" => await GetDestillatCriticalTempAsync(),
+                        "Kylare" => await GetKylareCriticalTempAsync(),
+                        _ => 90.0
+                    }
+                };
+
+                TemperatureSettingsChanged?.Invoke(this, args);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fel vid triggning av TemperatureSettingsChanged: {ex.Message}");
+            }
         }
         #endregion
     }

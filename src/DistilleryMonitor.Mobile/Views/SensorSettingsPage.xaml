@@ -2,79 +2,168 @@
 <ContentPage x:Class="DistilleryMonitor.Mobile.Views.SensorSettingsPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             Title="{Binding SensorName, StringFormat='{0} - Inställningar'}"
+             Title="{Binding SensorName, StringFormat='{0} - ⚙️ Inställningar'}"
              BackgroundColor="#1a1a2e"
              Shell.TitleColor="Green"
              Shell.BackgroundColor="#0d1421"
-             Shell.ForegroundColor="Green" >
+             Shell.ForegroundColor="Green">
 
     <ScrollView>
         <StackLayout Padding="20" Spacing="20">
 
-            <!-- Header -->
-            <Label Text="{Binding SensorName, StringFormat='⚙️ {0} Inställningar'}" 
-                   FontSize="24" 
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center" />
+            <!-- Connection Status Card -->
+            <Frame BackgroundColor="#16213e" 
+                   CornerRadius="15" 
+                   Padding="15"
+                   IsVisible="{Binding ConnectionStatus, Converter={StaticResource StringToBoolConverter}}">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Label Grid.Column="0" 
+                           Text="📡" 
+                           FontSize="18" 
+                           TextColor="White" 
+                           VerticalOptions="Center" />
+                    <Label Grid.Column="1" 
+                           Text="{Binding ConnectionStatus}" 
+                           FontSize="14" 
+                           TextColor="#ddd" 
+                           VerticalOptions="Center" 
+                           Margin="10,0,0,0" />
+                </Grid>
+            </Frame>
 
             <!-- Temperaturintervall -->
             <Frame BackgroundColor="#16213e" CornerRadius="15" Padding="20">
                 <StackLayout Spacing="15">
                     <Label Text="🌡️ Temperaturintervall"
-                            FontSize="18"
-                            FontAttributes="Bold"
-                            TextColor="White" />
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="White" />
 
                     <!-- Optimal börjar vid -->
                     <Grid ColumnDefinitions="*,100">
-                        <Label Grid.Column="0" Text="Optimal börjar vid:" TextColor="#ddd" VerticalOptions="Center" />
+                        <Label Grid.Column="0" 
+                               Text="🟢 Optimal börjar vid:" 
+                               TextColor="#28a745" 
+                               VerticalOptions="Center" />
                         <Entry Grid.Column="1"
-                            Text="{Binding OptimalMin}"
-                            Keyboard="Numeric"
-                            TextColor="White"
-                            BackgroundColor="#0f3460" />
+                               Text="{Binding OptimalMin}"
+                               Keyboard="Numeric"
+                               TextColor="White"
+                               BackgroundColor="#0f3460"
+                               IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
                     </Grid>
 
                     <!-- Varning vid -->
                     <Grid ColumnDefinitions="*,100">
-                        <Label Grid.Column="0" Text="Varning börjar vid:" TextColor="#ddd" VerticalOptions="Center" />
+                        <Label Grid.Column="0" 
+                               Text="🟡 Varning börjar vid:" 
+                               TextColor="#ffc107" 
+                               VerticalOptions="Center" />
                         <Entry Grid.Column="1"
-                            Text="{Binding WarningTemp}"
-                            Keyboard="Numeric"
-                            TextColor="White"
-                            BackgroundColor="#0f3460" />
+                               Text="{Binding WarningTemp}"
+                               Keyboard="Numeric"
+                               TextColor="White"
+                               BackgroundColor="#0f3460"
+                               IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
                     </Grid>
 
                     <!-- Kritisk vid -->
                     <Grid ColumnDefinitions="*,100">
-                        <Label Grid.Column="0" Text="Kritisk börjar vid:" TextColor="#ddd" VerticalOptions="Center" />
+                        <Label Grid.Column="0" 
+                               Text="🔴 Kritisk börjar vid:" 
+                               TextColor="#dc3545" 
+                               VerticalOptions="Center" />
                         <Entry Grid.Column="1"
-                                Text="{Binding CriticalTemp}"
-                                Keyboard="Numeric"
+                               Text="{Binding CriticalTemp}"
+                               Keyboard="Numeric"
+                               TextColor="White"
+                               BackgroundColor="#0f3460"
+                               IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
+                    </Grid>
+
+                    <!-- Temperatur-förklaring -->
+                    <Label Text="💡 Logik: Optimal → Varning → Kritisk (stigande ordning)"
+                           FontSize="12"
+                           TextColor="#999"
+                           HorizontalOptions="Center"
+                           Margin="0,10,0,0" />
+                </StackLayout>
+            </Frame>
+
+            <!-- ESP32 Sync Section (endast om ESP32 är tillgängligt) -->
+            <Frame BackgroundColor="#16213e" 
+                   CornerRadius="15" 
+                   Padding="20"
+                   IsVisible="{Binding CanSyncWithEsp32}">
+                <StackLayout Spacing="15">
+                    <Label Text="🔄 ESP32 Synkronisering"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="White" />
+
+                    <Label Text="Synkronisera inställningar mellan appen och ESP32-enheten."
+                           FontSize="14"
+                           TextColor="#ddd" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button Grid.Column="0"
+                                Text="⬇️ Från ESP32"
+                                Command="{Binding SyncFromEsp32Command}"
+                                BackgroundColor="#17a2b8"
                                 TextColor="White"
-                                BackgroundColor="#0f3460" />
+                                CornerRadius="10"
+                                FontSize="14"
+                                IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
+
+                        <Button Grid.Column="1"
+                                Text="⬆️ Till ESP32"
+                                Command="{Binding SyncToEsp32Command}"
+                                BackgroundColor="#6f42c1"
+                                TextColor="White"
+                                CornerRadius="10"
+                                FontSize="14"
+                                IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
                     </Grid>
                 </StackLayout>
             </Frame>
 
-            <!-- Knappar -->
+            <!-- Huvud-knappar -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Grid.Column="0"
                         Text="💾 Spara"
                         Command="{Binding SaveCommand}"
-                        BackgroundColor="#0f3460"
+                        BackgroundColor="#28a745"
                         TextColor="White"
-                        CornerRadius="10" />
+                        CornerRadius="10"
+                        HeightRequest="50"
+                        FontSize="16"
+                        FontAttributes="Bold"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
+
                 <Button Grid.Column="1"
                         Text="🔄 Återställ"
                         Command="{Binding ResetCommand}"
-                        BackgroundColor="#604020"
+                        BackgroundColor="#dc3545"
                         TextColor="White"
-                        CornerRadius="10" />
+                        CornerRadius="10"
+                        HeightRequest="50"
+                        FontSize="16"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}" />
             </Grid>
+
+            <!-- Loading Indicator -->
+            <ActivityIndicator IsVisible="{Binding IsLoading}"
+                              IsRunning="{Binding IsLoading}"
+                              Color="Green"
+                              HeightRequest="40" />
+
+            <!-- Loading Text -->
+            <Label Text="⏳ Arbetar..."
+                   FontSize="16"
+                   TextColor="#ffc107"
+                   HorizontalOptions="Center"
+                   IsVisible="{Binding IsLoading}" />
 
         </StackLayout>
     </ScrollView>
-
 </ContentPage>

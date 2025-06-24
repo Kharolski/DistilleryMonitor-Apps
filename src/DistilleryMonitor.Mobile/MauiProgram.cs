@@ -27,8 +27,11 @@ namespace DistilleryMonitor.Mobile
             builder.Services.AddSingleton<ApiService>();
             builder.Services.AddSingleton<IAppNotificationService, AppNotificationService>();
 
-            // NY: Developer Service
+            // Developer Service
             builder.Services.AddSingleton<IDeveloperService, DeveloperService>();
+
+            // Temperature Threshold Service
+            builder.Services.AddSingleton<TemperatureThresholdService>();
 
             // BEHÅLL TILLFÄLLIGT: MockDataService med ISettingsService
             builder.Services.AddSingleton<MockDataService>(provider =>

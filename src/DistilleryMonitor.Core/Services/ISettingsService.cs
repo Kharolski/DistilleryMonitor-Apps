@@ -46,5 +46,15 @@
         Task ResetToDefaultsAsync();
         Task<bool> IsFirstRunAsync();
         Task<string> GetEsp32BaseUrlAsync();
+
+        event EventHandler<TemperatureSettingsChangedEventArgs> TemperatureSettingsChanged;
+    }
+
+    public class TemperatureSettingsChangedEventArgs : EventArgs
+    {
+        public string SensorName { get; set; }
+        public double OptimalMin { get; set; }
+        public double WarningTemp { get; set; }
+        public double CriticalTemp { get; set; }
     }
 }

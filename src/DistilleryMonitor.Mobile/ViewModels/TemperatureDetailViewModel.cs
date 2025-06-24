@@ -11,13 +11,29 @@ namespace DistilleryMonitor.Mobile.ViewModels;
 [QueryProperty(nameof(SensorId), "sensorId")]
 public partial class TemperatureDetailViewModel : ObservableObject
 {
+    #region Private Fields
     private readonly ApiService _apiService;
     private readonly ISettingsService _settingsService;
-    private readonly MockDataService _mockDataService; 
+    private readonly MockDataService _mockDataService;
+    private readonly TemperatureThresholdService _thresholdService;
     private Timer? _updateTimer;
     private const int UPDATE_INTERVAL_SECONDS = 3;
-    public ISettingsService SettingsService => _settingsService;
+    #endregion
 
+    #region Constructor & Services
+    public ISettingsService SettingsService => _settingsService;
+    public TemperatureThresholdService ThresholdService => _thresholdService;
+
+    public TemperatureDetailViewModel(ApiService apiService, ISettingsService settingsService, MockDataService mockDataService, TemperatureThresholdService thresholdService)
+    {
+        _apiService = apiService;
+        _settingsService = settingsService;
+        _mockDataService = mockDataService;
+        _thresholdService = thresholdService;
+    }
+    #endregion
+
+    #region Observable Properties
     [ObservableProperty] private int sensorId = -1;
     [ObservableProperty] private string sensorName = string.Empty;
     [ObservableProperty] private double temperature;
@@ -31,15 +47,9 @@ public partial class TemperatureDetailViewModel : ObservableObject
     [ObservableProperty] private double criticalTemp;
     [ObservableProperty] private bool useMockData = false;
     [ObservableProperty] private string connectionStatus = "";
+    #endregion
 
-    // Ta emot MockDataService via DI
-    public TemperatureDetailViewModel(ApiService apiService, ISettingsService settingsService, MockDataService mockDataService)
-    {
-        _apiService = apiService;
-        _settingsService = settingsService;
-        _mockDataService = mockDataService; // Använd injected service
-    }
-
+    #region Computed Properties 
     public string OptimalRangeNew => $"{OptimalMin:F1}°C - {WarningTemp:F1}°C";
 
     public string StatusNew
@@ -48,10 +58,10 @@ public partial class TemperatureDetailViewModel : ObservableObject
         {
             return Temperature switch
             {
-                var t when t < OptimalMin => "För kallt",
-                var t when t >= OptimalMin && t < WarningTemp => "Optimal",
-                var t when t >= WarningTemp && t < CriticalTemp => "Varning",
-                _ => "Kritisk"
+                var t when t < OptimalMin => "🔵 Kalt",          
+                var t when t >= OptimalMin && t < WarningTemp => "🟢 Optimal",
+                var t when t >= WarningTemp && t < CriticalTemp => "🟡 Varning",
+                _ => "🔴 Kritisk"
             };
         }
     }
@@ -62,10 +72,10 @@ public partial class TemperatureDetailViewModel : ObservableObject
         {
             return Temperature switch
             {
-                var t when t < OptimalMin => "#0066cc",      // Blå
-                var t when t >= OptimalMin && t < WarningTemp => "#28a745", // Grön
-                var t when t >= WarningTemp && t < CriticalTemp => "#ffc107", // Gul
-                _ => "#dc3545"  // Röd
+                var t when t < OptimalMin => "#2196F3",      // Blå (Material Design)
+                var t when t >= OptimalMin && t < WarningTemp => "#4CAF50", // Grön
+                var t when t >= WarningTemp && t < CriticalTemp => "#FF9800", // Orange
+                _ => "#F44336"  // Röd
             };
         }
     }
@@ -76,14 +86,16 @@ public partial class TemperatureDetailViewModel : ObservableObject
         {
             return Temperature switch
             {
-                var t when t < OptimalMin => Color.FromArgb("#0066cc"),      // Blå
-                var t when t >= OptimalMin && t < WarningTemp => Color.FromArgb("#28a745"), // Grön
-                var t when t >= WarningTemp && t < CriticalTemp => Color.FromArgb("#ffc107"), // Gul
-                _ => Color.FromArgb("#dc3545")  // Röd
+                var t when t < OptimalMin => Color.FromArgb("#2196F3"),      // Blå
+                var t when t >= OptimalMin && t < WarningTemp => Color.FromArgb("#4CAF50"), // Grön
+                var t when t >= WarningTemp && t < CriticalTemp => Color.FromArgb("#FF9800"), // Orange
+                _ => Color.FromArgb("#F44336")  // Röd
             };
         }
     }
+    #endregion
 
+    #region Navigation & Lifecycle 
     /// <summary>
     /// Körs när SensorId ändras (från navigation)
     /// </summary>
@@ -101,6 +113,42 @@ public partial class TemperatureDetailViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Körs när sidan visas igen (efter navigation tillbaka)
+    /// </summary>
+    public async Task OnAppearingAsync()
+    {
+        Debug.WriteLine($"TemperatureDetailViewModel: OnAppearing for sensor {SensorId}");
+        // Starta om timer om den inte körs
+        if (_updateTimer == null)
+        {
+            StartAutoUpdate();
+        }
+        // Ladda data direkt för snabb uppdatering
+        await LoadSensorDataAsync();
+    }
+
+    /// <summary>
+    /// Körs när sidan försvinner (navigation bort)
+    /// </summary>
+    public void OnDisappearing()
+    {
+        Debug.WriteLine($"TemperatureDetailViewModel: OnDisappearing for sensor {SensorId}");
+        // Stoppa timer för att spara batteri/resurser
+        StopAutoUpdate();
+    }
+
+    /// <summary>
+    /// Cleanup
+    /// </summary>
+    public void Dispose()
+    {
+        Debug.WriteLine($"TemperatureDetailViewModel: Disposing for sensor {SensorId}");
+        StopAutoUpdate();
+    }
+    #endregion
+
+    #region Settings Loading 
     /// <summary>
     /// Ladda inställningar från Settings
     /// </summary>
@@ -121,6 +169,108 @@ public partial class TemperatureDetailViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Sätter temperaturvärden från Settings baserat på sensortyp
+    /// NU MED ESP32-INTEGRATION!
+    /// </summary>
+    private async Task SetTemperatureLimitsFromSettings(string sensorName)
+    {
+        try
+        {
+            // FÖRST: Försök hämta från ESP32 (om inte mock-data)
+            if (!UseMockData)
+            {
+                var esp32Settings = await _apiService.GetSensorSettingsAsync(sensorName);
+                if (esp32Settings != null)
+                {
+                    OptimalMin = esp32Settings.OptimalMin;
+                    WarningTemp = esp32Settings.WarningTemp;
+                    CriticalTemp = esp32Settings.CriticalTemp;
+
+                    Debug.WriteLine($"✅ Temperaturlimits från ESP32 för {sensorName}:");
+                    Debug.WriteLine($"   OptimalMin: {OptimalMin}°C");
+                    Debug.WriteLine($"   WarningTemp: {WarningTemp}°C");
+                    Debug.WriteLine($"   CriticalTemp: {CriticalTemp}°C");
+
+                    OnPropertyChanged(nameof(OptimalRangeNew));
+                    return; // Lyckat - använd ESP32-värden
+                }
+            }
+
+            // FALLBACK: Använd lokala Settings (ursprunglig kod)
+            Debug.WriteLine($"📱 Använder lokala Settings för {sensorName}");
+            switch (sensorName)
+            {
+                case "Kolv":
+                    OptimalMin = await _settingsService.GetKolvOptimalMinAsync();
+                    WarningTemp = await _settingsService.GetKolvWarningTempAsync();
+                    CriticalTemp = await _settingsService.GetKolvCriticalTempAsync();
+                    break;
+                case "Destillat":
+                    OptimalMin = await _settingsService.GetDestillatOptimalMinAsync();
+                    WarningTemp = await _settingsService.GetDestillatWarningTempAsync();
+                    CriticalTemp = await _settingsService.GetDestillatCriticalTempAsync();
+                    break;
+                case "Kylare":
+                    OptimalMin = await _settingsService.GetKylareOptimalMinAsync();
+                    WarningTemp = await _settingsService.GetKylareWarningTempAsync();
+                    CriticalTemp = await _settingsService.GetKylareCriticalTempAsync();
+                    break;
+                default:
+                    // Fallback till Kolv-värden
+                    OptimalMin = await _settingsService.GetKolvOptimalMinAsync();
+                    WarningTemp = await _settingsService.GetKolvWarningTempAsync();
+                    CriticalTemp = await _settingsService.GetKolvCriticalTempAsync();
+                    break;
+            }
+
+            // Trigga uppdatering av OptimalRangeNew
+            OnPropertyChanged(nameof(OptimalRangeNew));
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error loading temperature limits from settings: {ex.Message}");
+            // Fallback till hårdkodade värden om Settings misslyckas
+            SetTemperatureLimitsHardcoded(sensorName);
+        }
+    }
+
+    /// <summary>
+    /// Fallback med hårdkodade värden om Settings misslyckas (URSPRUNGLIG)
+    /// </summary>
+    private void SetTemperatureLimitsHardcoded(string sensorName)
+    {
+        Debug.WriteLine($"🔧 Använder hårdkodade värden för {sensorName}");
+        switch (sensorName)
+        {
+            case "Kolv":
+                OptimalMin = 70.0;
+                WarningTemp = 80.0;
+                CriticalTemp = 90.0;
+                break;
+            case "Destillat":
+                OptimalMin = 75.0;
+                WarningTemp = 85.0;
+                CriticalTemp = 95.0;
+                break;
+            case "Kylare":
+                OptimalMin = 20.0;
+                WarningTemp = 30.0;
+                CriticalTemp = 40.0;
+                break;
+            default:
+                OptimalMin = 50.0;
+                WarningTemp = 80.0;
+                CriticalTemp = 90.0;
+                break;
+        }
+
+        // Trigga uppdatering av OptimalRangeNew
+        OnPropertyChanged(nameof(OptimalRangeNew));
+    }
+    #endregion
+
+    #region Data Loading 
+    /// <summary>
     /// Laddar sensordata baserat på SensorId
     /// </summary>
     [RelayCommand]
@@ -129,7 +279,6 @@ public partial class TemperatureDetailViewModel : ObservableObject
         try
         {
             IsLoading = true;
-
             // Ladda senaste settings
             await LoadSettingsAsync();
 
@@ -191,16 +340,16 @@ public partial class TemperatureDetailViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Uppdaterar UI med sensordata
+    /// Uppdaterar UI med sensordata (URSPRUNGLIG)
     /// </summary>
-    private async Task UpdateSensorData(TemperatureReading sensor) 
+    private async Task UpdateSensorData(TemperatureReading sensor)
     {
         SensorName = sensor.Name;
         Temperature = sensor.Temperature;
         Status = sensor.Status.ToUpper();
         StatusMessage = GetStatusMessage(sensor.Status, sensor.Temperature);
 
-        // Ladda temperaturlimits från Settings
+        // Ladda temperaturlimits från Settings (nu med ESP32-integration)
         await SetTemperatureLimitsFromSettings(sensor.Name);
 
         LastUpdated = DateTime.Now;
@@ -217,87 +366,7 @@ public partial class TemperatureDetailViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Sätter temperaturvärden från Settings baserat på sensortyp
-    /// </summary>
-    private async Task SetTemperatureLimitsFromSettings(string sensorName)
-    {
-        try
-        {
-            switch (sensorName)
-            {
-                case "Kolv":
-                    OptimalMin = await _settingsService.GetKolvOptimalMinAsync();
-                    WarningTemp = await _settingsService.GetKolvWarningTempAsync();
-                    CriticalTemp = await _settingsService.GetKolvCriticalTempAsync();
-                    break;
-
-                case "Destillat":
-                    OptimalMin = await _settingsService.GetDestillatOptimalMinAsync();
-                    WarningTemp = await _settingsService.GetDestillatWarningTempAsync();
-                    CriticalTemp = await _settingsService.GetDestillatCriticalTempAsync();
-                    break;
-
-                case "Kylare":
-                    OptimalMin = await _settingsService.GetKylareOptimalMinAsync();
-                    WarningTemp = await _settingsService.GetKylareWarningTempAsync();
-                    CriticalTemp = await _settingsService.GetKylareCriticalTempAsync();
-                    break;
-
-                default:
-                    // Fallback till Kolv-värden
-                    OptimalMin = await _settingsService.GetKolvOptimalMinAsync();
-                    WarningTemp = await _settingsService.GetKolvWarningTempAsync();
-                    CriticalTemp = await _settingsService.GetKolvCriticalTempAsync();
-                    break;
-            }
-
-            // Trigga uppdatering av OptimalRangeNew
-            OnPropertyChanged(nameof(OptimalRangeNew));
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error loading temperature limits from settings: {ex.Message}");
-
-            // Fallback till hårdkodade värden om Settings misslyckas
-            SetTemperatureLimitsHardcoded(sensorName);
-        }
-    }
-
-    /// <summary>
-    /// Fallback med hårdkodade värden om Settings misslyckas
-    /// </summary>
-    private void SetTemperatureLimitsHardcoded(string sensorName)
-    {
-        switch (sensorName)
-        {
-            case "Kolv":
-                OptimalMin = 70.0;
-                WarningTemp = 80.0;
-                CriticalTemp = 90.0;
-                break;
-            case "Destillat":
-                OptimalMin = 75.0;
-                WarningTemp = 85.0;
-                CriticalTemp = 95.0;
-                break;
-            case "Kylare":
-                OptimalMin = 20.0;
-                WarningTemp = 30.0;
-                CriticalTemp = 40.0;
-                break;
-            default:
-                OptimalMin = 50.0;
-                WarningTemp = 80.0;
-                CriticalTemp = 90.0;
-                break;
-        }
-
-        // Trigga uppdatering av OptimalRangeNew
-        OnPropertyChanged(nameof(OptimalRangeNew));
-    }
-
-    /// <summary>
-    /// Genererar statusmeddelande baserat på status och temperatur
+    /// Genererar statusmeddelande baserat på status och temperatur (URSPRUNGLIG)
     /// </summary>
     private string GetStatusMessage(string status, double temperature)
     {
@@ -310,7 +379,9 @@ public partial class TemperatureDetailViewModel : ObservableObject
             _ => "Status okänd - kontrollera sensoranslutning"
         };
     }
+    #endregion
 
+    #region Commands 
     /// <summary>
     /// Manuell uppdatering
     /// </summary>
@@ -329,14 +400,15 @@ public partial class TemperatureDetailViewModel : ObservableObject
         // Navigation till sensor-inställningar med både ID och namn
         await Shell.Current.GoToAsync($"sensor-settings?sensorId={SensorId}&sensorName={Uri.EscapeDataString(SensorName)}");
     }
+    #endregion
 
+    #region Auto Update Timer
     /// <summary>
     /// Startar automatisk uppdatering
     /// </summary>
     public void StartAutoUpdate()
     {
         StopAutoUpdate();
-
         // Hämta uppdateringsintervall från settings
         _ = Task.Run(async () =>
         {
@@ -359,42 +431,112 @@ public partial class TemperatureDetailViewModel : ObservableObject
         _updateTimer?.Dispose();
         _updateTimer = null;
     }
+    #endregion
 
+    #region ESP32-INTEGRATION METODER
     /// <summary>
-    /// Körs när sidan visas igen (efter navigation tillbaka)
+    /// Sparar temperaturinställningar till ESP32
+    /// Används från Settings-sidan för att synkronisera ändringar
     /// </summary>
-    public async Task OnAppearingAsync()
+    public async Task<bool> SaveSettingsToEsp32Async(double optimalMin, double warningTemp, double criticalTemp)
     {
-        Debug.WriteLine($"TemperatureDetailViewModel: OnAppearing for sensor {SensorId}");
-
-        // Starta om timer om den inte körs
-        if (_updateTimer == null)
+        try
         {
-            StartAutoUpdate();
+            if (string.IsNullOrEmpty(SensorName) || UseMockData)
+            {
+                Debug.WriteLine("⚠️ Kan inte spara till ESP32 - MockData eller inget sensornamn");
+                return false;
+            }
+
+            Debug.WriteLine($"💾 Sparar inställningar till ESP32 för {SensorName}");
+
+            var settings = new SensorSettings
+            {
+                SensorName = SensorName,
+                OptimalMin = optimalMin,
+                WarningTemp = warningTemp,
+                CriticalTemp = criticalTemp
+            };
+
+            bool success = await _apiService.SetSensorSettingsAsync(SensorName, settings);
+
+            if (success)
+            {
+                // Uppdatera lokala värden
+                OptimalMin = optimalMin;
+                WarningTemp = warningTemp;
+                CriticalTemp = criticalTemp;
+
+                // Trigga UI-uppdatering
+                OnPropertyChanged(nameof(OptimalRangeNew));
+                OnPropertyChanged(nameof(StatusNew));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(StatusColorHex));
+
+                Debug.WriteLine($"✅ Inställningar sparade till ESP32 för {SensorName}");
+                return true;
+            }
+            else
+            {
+                Debug.WriteLine($"❌ Kunde inte spara inställningar till ESP32 för {SensorName}");
+                return false;
+            }
         }
-
-        // Ladda data direkt för snabb uppdatering
-        await LoadSensorDataAsync();
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"❌ Fel vid sparning till ESP32: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
-    /// Körs när sidan försvinner (navigation bort)
+    /// Laddar senaste inställningar från ESP32
+    /// Används för att synkronisera efter ändringar från webbgränssnittet
     /// </summary>
-    public void OnDisappearing()
+    public async Task<bool> RefreshSettingsFromEsp32Async()
     {
-        Debug.WriteLine($"TemperatureDetailViewModel: OnDisappearing for sensor {SensorId}");
+        try
+        {
+            if (string.IsNullOrEmpty(SensorName) || UseMockData)
+            {
+                Debug.WriteLine("⚠️ Kan inte ladda från ESP32 - MockData eller inget sensornamn");
+                return false;
+            }
 
-        // Stoppa timer för att spara batteri/resurser
-        StopAutoUpdate();
+            Debug.WriteLine($"🔄 Uppdaterar inställningar från ESP32 för {SensorName}");
+
+            var settings = await _apiService.GetSensorSettingsAsync(SensorName);
+            if (settings != null)
+            {
+                OptimalMin = settings.OptimalMin;
+                WarningTemp = settings.WarningTemp;
+                CriticalTemp = settings.CriticalTemp;
+
+                // Trigga UI-uppdatering
+                OnPropertyChanged(nameof(OptimalRangeNew));
+                OnPropertyChanged(nameof(StatusNew));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(StatusColorHex));
+
+                Debug.WriteLine($"✅ Inställningar uppdaterade från ESP32 för {SensorName}");
+                return true;
+            }
+            else
+            {
+                Debug.WriteLine($"❌ Kunde inte ladda inställningar från ESP32 för {SensorName}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"❌ Fel vid laddning från ESP32: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
-    /// Cleanup
+    /// Kontrollerar om ESP32-integration är tillgänglig
     /// </summary>
-    public void Dispose()
-    {
-        Debug.WriteLine($"TemperatureDetailViewModel: Disposing for sensor {SensorId}");
-        StopAutoUpdate();
-    }
-
+    public bool IsEsp32IntegrationAvailable => !UseMockData && !string.IsNullOrEmpty(SensorName);
+    #endregion
 }

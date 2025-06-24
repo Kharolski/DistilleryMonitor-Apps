@@ -23,7 +23,7 @@
                    CornerRadius="15"
                    Padding="20">
                 <StackLayout>
-                    <Label Text="🌡️ Temperaturövervakning"
+                    <Label Text="Temperaturövervakning"
                            FontSize="24"
                            FontAttributes="Bold"
                            TextColor="White"
@@ -65,7 +65,7 @@
 
                     <!-- Graf titel -->
                     <Label Grid.Row="0"
-                           Text="📈 Temperaturhistorik (senaste 2h)"
+                           Text="📈 Historik (senaste 2h)"
                            FontSize="18"
                            FontAttributes="Bold"
                            TextColor="White"

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Maui.Graphics;
 using DistilleryMonitor.Core.Services;
+using DistilleryMonitor.Mobile.Services;
 
 namespace DistilleryMonitor.Mobile.Components;
 
@@ -17,10 +18,20 @@ public class TemperatureGraphView : GraphicsView, IDrawable
     public static readonly BindableProperty SettingsServiceProperty =
         BindableProperty.Create(nameof(SettingsService), typeof(ISettingsService), typeof(TemperatureGraphView));
 
+    public static readonly BindableProperty ThresholdServiceProperty =
+    BindableProperty.Create(nameof(ThresholdService), typeof(TemperatureThresholdService), typeof(TemperatureGraphView),
+        propertyChanged: OnThresholdServiceChanged);
+
     public ISettingsService SettingsService
     {
         get => (ISettingsService)GetValue(SettingsServiceProperty);
         set => SetValue(SettingsServiceProperty, value);
+    }
+
+    public TemperatureThresholdService ThresholdService
+    {
+        get => (TemperatureThresholdService)GetValue(ThresholdServiceProperty);
+        set => SetValue(ThresholdServiceProperty, value);
     }
 
     public double Temperature
@@ -52,6 +63,9 @@ public class TemperatureGraphView : GraphicsView, IDrawable
     {
         Drawable = this;
         BackgroundColor = Color.FromArgb("#333333");
+
+        // Registrera för settings-ändringar när både services är tillgängliga
+        PropertyChanged += OnPropertyChanged;
     }
     #endregion
 
@@ -70,6 +84,74 @@ public class TemperatureGraphView : GraphicsView, IDrawable
         {
             await view.LoadTemperatureSettingsAsync();
             view.Invalidate();
+        }
+    }
+
+    // Event handler för ThresholdService
+    private static void OnThresholdServiceChanged(BindableObject bindable, object oldValue, object newValue)
+    {
+        if (bindable is TemperatureGraphView view && view.SettingsService != null)
+        {
+            // Vi behöver bara veta att ThresholdService har ändrats
+            // Eventet kommer fortfarande från SettingsService
+            System.Diagnostics.Debug.WriteLine($"🔄 ThresholdService kopplat till graf för {view.SensorName}");
+
+            // Registrera för settings-ändringar
+            view.RegisterForSettingsChanges();
+
+            // Ladda om inställningar när ThresholdService kopplas
+            _ = Task.Run(async () =>
+            {
+                await view.LoadTemperatureSettingsAsync();
+                MainThread.BeginInvokeOnMainThread(() => view.Invalidate());
+            });
+        }
+    }
+
+    // Hantera när properties ändras
+    private void OnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsService) || e.PropertyName == nameof(ThresholdService))
+        {
+            RegisterForSettingsChanges();
+        }
+    }
+
+    // Registrera för settings-ändringar
+    private void RegisterForSettingsChanges()
+    {
+        if (SettingsService != null && ThresholdService != null)
+        {
+            // Avregistrera först (för säkerhets skull)
+            SettingsService.TemperatureSettingsChanged -= OnTemperatureSettingsChanged;
+
+            // Registrera för ändringar
+            SettingsService.TemperatureSettingsChanged += OnTemperatureSettingsChanged;
+
+            System.Diagnostics.Debug.WriteLine($"✅ Graf registrerad för settings-ändringar: {SensorName}");
+        }
+    }
+    #endregion
+
+    #region Event Handlers
+    // Event handler som triggas när settings ändras
+    private async void OnTemperatureSettingsChanged(object sender, TemperatureSettingsChangedEventArgs e)
+    {
+        // Bara uppdatera om det är vår sensor
+        if (e.SensorName == SensorName)
+        {
+            System.Diagnostics.Debug.WriteLine($"🔄 Graf uppdateras för {SensorName} - nya värden: Optimal={e.OptimalMin}, Warning={e.WarningTemp}, Critical={e.CriticalTemp}");
+
+            // Uppdatera cache direkt från event
+            _cachedOptimalMin = e.OptimalMin;
+            _cachedWarningTemp = e.WarningTemp;
+            _cachedCriticalTemp = e.CriticalTemp;
+
+            // Rita om grafen på UI-tråden
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Invalidate();
+            });
         }
     }
     #endregion
@@ -104,7 +186,7 @@ public class TemperatureGraphView : GraphicsView, IDrawable
         Invalidate();
     }
 
-    // 🆕 VISA SENASTE 40% AV DATAN
+    // VISA SENASTE 40% AV DATAN
     private List<TemperaturePoint> GetDisplayData()
     {
         if (_temperatureHistory.Count <= 5)

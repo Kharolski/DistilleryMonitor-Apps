@@ -106,7 +106,7 @@ public partial class MainPageViewModel : ObservableObject
                 }
                 else
                 {
-                    ConnectionStatus = "Ansluter...";
+                    //ConnectionStatus = "Ansluter...";
                 }
             });
         }
@@ -292,7 +292,7 @@ public partial class MainPageViewModel : ObservableObject
                         Sensors.Add(sensor);
                     }
                     IsConnected = true;
-                    ConnectionStatus = $"Live - {response.SensorCount} sensorer";
+                    ConnectionStatus = $"Live 🌡️ - {response.SensorCount} sensorer";
                 }
                 else
                 {
@@ -358,7 +358,7 @@ public partial class MainPageViewModel : ObservableObject
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
                         IsConnected = true;
-                        ConnectionStatus = $"Live - {response.SensorCount} sensorer";
+                        ConnectionStatus = $"Live 🌡️ - {response.SensorCount} sensorer";
                     });
                 }
                 else
@@ -484,9 +484,6 @@ public partial class MainPageViewModel : ObservableObject
         try
         {
             var historyData = await _databaseService.GetRecentHistoryAsync(120); // 2 timmar
-
-            // Debug: att veta hur mycket data som laddas
-            System.Diagnostics.Debug.WriteLine($"🔍 Hämtade {historyData?.Count ?? 0} historiska poster");
 
             var filteredData = FilterToInterval(historyData, TimeSpan.FromMinutes(2));
 

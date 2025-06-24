@@ -10,10 +10,13 @@ namespace DistilleryMonitor.Core.Services;
 /// </summary>
 public class ApiService
 {
+    #region Private Fields
     private readonly HttpClient _httpClient;
     private readonly ISettingsService _settingsService;
     private string _baseUrl = "";
+    #endregion
 
+    #region Constructor
     /// <summary>
     /// Konstruktor - initialiserar API service med HTTP-klient och settings
     /// </summary>
@@ -21,7 +24,7 @@ public class ApiService
     {
         _httpClient = httpClient;
         _settingsService = settingsService;
-        _baseUrl = ""; 
+        _baseUrl = "";
 
         // Ladda sparad IP-adress från settings vid start
         _ = Task.Run(async () =>
@@ -34,7 +37,9 @@ public class ApiService
             }
         });
     }
+    #endregion
 
+    #region Connection Management
     /// <summary>
     /// Uppdaterar ESP32 IP-adress och sparar i settings
     /// </summary>
@@ -82,10 +87,12 @@ public class ApiService
         catch (Exception ex)
         {
             Console.WriteLine($"❌ TestConnection fel: {ex.Message}");
-            return false; // Alla fel = anslutning fungerar inte
+            return false;
         }
     }
+    #endregion
 
+    #region Temperature Data
     /// <summary>
     /// Hämtar aktuella temperaturavläsningar från ESP32
     /// Anropar GET /api/temperatures
@@ -132,7 +139,9 @@ public class ApiService
             return null;
         }
     }
+    #endregion
 
+    #region Configuration Management
     /// <summary>
     /// Hämtar konfiguration (temperaturintervall) från ESP32
     /// Anropar GET /api/config
@@ -150,6 +159,7 @@ public class ApiService
 
             var response = await _httpClient.GetAsync($"{_baseUrl}/api/config");
             response.EnsureSuccessStatusCode();
+
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<ConfigurationResponse>(json, GetJsonOptions());
         }
@@ -178,6 +188,7 @@ public class ApiService
 
             var json = JsonSerializer.Serialize(config, GetJsonOptions());
             var content = new StringContent(json, Encoding.UTF8, "application/json");
+
             var response = await _httpClient.PostAsync($"{_baseUrl}/api/config", content);
             return response.IsSuccessStatusCode;
         }
@@ -187,7 +198,105 @@ public class ApiService
             return false;
         }
     }
+    #endregion
 
+    #region Sensor-Specific Settings (NYA METODER)
+    /// <summary>
+    /// Hämtar temperaturinställningar för specifik sensor från ESP32
+    /// RÄTT mappning: BlueLimit→OptimalMin, GreenLimit→WarningTemp, YellowLimit→CriticalTemp
+    /// </summary>
+    /// <param name="sensorName">Sensornamn (Kolv, Destillat, Kylare)</param>
+    /// <returns>SensorSettings eller null om fel</returns>
+    public async Task<SensorSettings?> GetSensorSettingsAsync(string sensorName)
+    {
+        try
+        {
+            // Hämta hela konfigurationen från ESP32
+            var config = await GetConfigurationAsync();
+            if (config == null)
+                return null;
+
+            // Hitta rätt sensor baserat på namn
+            SensorConfig? sensorConfig = sensorName switch
+            {
+                "Kolv" => config.Sensor0,
+                "Destillat" => config.Sensor1,
+                "Kylare" => config.Sensor2,
+                _ => null
+            };
+
+            if (sensorConfig == null)
+                return null;
+
+            // RÄTT konvertering: ESP32 → App
+            return new SensorSettings
+            {
+                SensorName = sensorName,
+                OptimalMin = sensorConfig.BlueLimit,      // BlueLimit = när grön börjar
+                WarningTemp = sensorConfig.GreenLimit,    // GreenLimit = när gul börjar
+                CriticalTemp = sensorConfig.YellowLimit   // YellowLimit = när röd börjar
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error getting sensor settings for {sensorName}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Skickar nya temperaturinställningar för specifik sensor till ESP32
+    /// RÄTT mappning: OptimalMin→BlueLimit, WarningTemp→GreenLimit, CriticalTemp→YellowLimit
+    /// </summary>
+    /// <param name="sensorName">Sensornamn (Kolv, Destillat, Kylare)</param>
+    /// <param name="settings">Nya inställningar</param>
+    /// <returns>true om uppdatering lyckades</returns>
+    public async Task<bool> SetSensorSettingsAsync(string sensorName, SensorSettings settings)
+    {
+        try
+        {
+            // Hämta nuvarande konfiguration
+            var config = await GetConfigurationAsync();
+            if (config == null)
+                return false;
+
+            // Uppdatera rätt sensor
+            SensorConfig targetSensor = sensorName switch
+            {
+                "Kolv" => config.Sensor0,
+                "Destillat" => config.Sensor1,
+                "Kylare" => config.Sensor2,
+                _ => throw new ArgumentException($"Okänd sensor: {sensorName}")
+            };
+
+            // RÄTT konvertering: App → ESP32
+            targetSensor.BlueLimit = settings.OptimalMin;     // OptimalMin → BlueLimit (grön börjar)
+            targetSensor.GreenLimit = settings.WarningTemp;   // WarningTemp → GreenLimit (gul börjar)
+            targetSensor.YellowLimit = settings.CriticalTemp; // CriticalTemp → YellowLimit (röd börjar)
+            targetSensor.Name = sensorName;
+
+            // Skicka hela konfigurationen tillbaka till ESP32
+            bool success = await UpdateConfigurationAsync(config);
+
+            if (success)
+            {
+                Console.WriteLine($"✅ Sensor-inställningar sparade på ESP32 för {sensorName}");
+                Console.WriteLine($"   🟢 Grön börjar vid: {settings.OptimalMin}°C → BlueLimit");
+                Console.WriteLine($"   🟡 Gul börjar vid: {settings.WarningTemp}°C → GreenLimit");
+                Console.WriteLine($"   🔴 Röd börjar vid: {settings.CriticalTemp}°C → YellowLimit");
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error setting sensor settings for {sensorName}: {ex.Message}");
+            return false;
+        }
+    }
+    #endregion
+
+    #region Helper Methods
     /// <summary>
     /// JSON-serialiseringsinställningar för att matcha ESP32 format
     /// Konverterar C# PascalCase till snake_case (BlueLimit -> blue_limit)
@@ -196,8 +305,9 @@ public class ApiService
     {
         return new JsonSerializerOptions
         {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower, // C# -> JSON naming
-            PropertyNameCaseInsensitive = true // Tillåt olika case vid läsning
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            PropertyNameCaseInsensitive = true
         };
     }
+    #endregion
 }
